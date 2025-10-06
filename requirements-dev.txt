@@ -1,0 +1,7 @@
+# Development-only dependencies
+-r requirements.txt
+
+pre-commit==3.6.0
+autopep8==2.0.4
+pylint==3.0.3
+
