@@ -15,13 +15,16 @@ chat_activity_service = ChatActivityService()
 
 async def track_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
-    Track any message in chat to update activity
+    Track any message in chat to update activity (except bot's own messages)
 
     Args:
         update: Telegram update
         context: Callback context
     """
-    if update.effective_chat:
+    if update.effective_chat and update.effective_user:
+        # Ignore messages from the bot itself
+        if update.effective_user.is_bot:
+            return
         chat_id = update.effective_chat.id
         chat_activity_service.update_activity(chat_id)
 

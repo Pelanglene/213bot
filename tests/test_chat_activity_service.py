@@ -20,7 +20,6 @@ def test_update_activity(service):
     service.update_activity(chat_id)
 
     assert chat_id in service._last_activity
-    assert not service._dead_chat_sent.get(chat_id, True)
 
 
 def test_is_chat_inactive_no_activity(service):
@@ -57,24 +56,6 @@ def test_is_chat_inactive_old_activity(service):
     else:
         # Outside active hours, should not be inactive
         assert not service.is_chat_inactive(chat_id)
-
-
-def test_is_chat_inactive_already_sent(service):
-    """Test that chat doesn't trigger again after dead chat sent"""
-    chat_id = 123
-    moscow_tz = ZoneInfo("Europe/Moscow")
-
-    # Set old activity
-    now = datetime.now(moscow_tz)
-    old_time = now.replace(hour=12, minute=0, second=0, microsecond=0) - timedelta(
-        minutes=16
-    )
-    service._last_activity[chat_id] = old_time
-
-    # Mark as sent
-    service.mark_dead_chat_sent(chat_id)
-
-    assert not service.is_chat_inactive(chat_id)
 
 
 def test_is_active_hours(service):
@@ -123,41 +104,59 @@ def test_get_inactive_chats(service):
     chat_id_2 = 456
     service._last_activity[chat_id_2] = base_time - timedelta(minutes=16)
 
-    # Inactive chat but already sent
+    # Another inactive chat (20 minutes ago)
     chat_id_3 = 789
-    service._last_activity[chat_id_3] = base_time - timedelta(minutes=16)
-    service._dead_chat_sent[chat_id_3] = True
+    service._last_activity[chat_id_3] = base_time - timedelta(minutes=20)
 
     inactive = service.get_inactive_chats()
 
-    # Only chat_id_2 should be in the list if we're in active hours
+    # Both chat_id_2 and chat_id_3 should be in the list if we're in active hours
     if 9 <= now.hour < 21:
         assert chat_id_2 in inactive
+        assert chat_id_3 in inactive
         assert chat_id_1 not in inactive
-        assert chat_id_3 not in inactive
     else:
         # Outside active hours, no chats should be inactive
         assert len(inactive) == 0
 
 
 def test_mark_dead_chat_sent(service):
-    """Test marking dead chat as sent"""
+    """Test marking dead chat as sent updates activity time"""
     chat_id = 123
+    moscow_tz = ZoneInfo("Europe/Moscow")
 
-    service.mark_dead_chat_sent(chat_id)
-
-    assert service._dead_chat_sent[chat_id]
-
-
-def test_update_activity_resets_flag(service):
-    """Test that updating activity resets dead chat sent flag"""
-    chat_id = 123
+    # Set old activity
+    old_time = datetime.now(moscow_tz) - timedelta(minutes=20)
+    service._last_activity[chat_id] = old_time
 
     # Mark as sent
-    service._dead_chat_sent[chat_id] = True
+    service.mark_dead_chat_sent(chat_id)
 
-    # Update activity
-    service.update_activity(chat_id)
+    # Should update activity time to now
+    assert service._last_activity[chat_id] > old_time
 
-    # Flag should be reset
-    assert not service._dead_chat_sent[chat_id]
+
+def test_repeated_dead_chat_messages(service):
+    """Test that dead chat messages continue to be sent every 15 minutes"""
+    chat_id = 123
+    moscow_tz = ZoneInfo("Europe/Moscow")
+    now = datetime.now(moscow_tz)
+
+    # Set activity to 16 minutes ago at active hours
+    base_time = now.replace(hour=12, minute=0, second=0, microsecond=0)
+    service._last_activity[chat_id] = base_time - timedelta(minutes=16)
+
+    # Should be inactive during active hours
+    if 9 <= now.hour < 21:
+        assert service.is_chat_inactive(chat_id)
+
+    # Mark as sent - updates activity
+    service.mark_dead_chat_sent(chat_id)
+
+    # Now should NOT be inactive
+    assert not service.is_chat_inactive(chat_id)
+
+    # But if we wait another 16 minutes (simulate), should be inactive again
+    service._last_activity[chat_id] = base_time - timedelta(minutes=16)
+    if 9 <= now.hour < 21:
+        assert service.is_chat_inactive(chat_id)

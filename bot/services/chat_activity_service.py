@@ -13,7 +13,6 @@ class ChatActivityService:
 
     def __init__(self):
         self._last_activity: Dict[int, datetime] = {}
-        self._dead_chat_sent: Dict[int, bool] = {}
         self.inactive_threshold = timedelta(minutes=15)
         self.moscow_tz = ZoneInfo("Europe/Moscow")
         self.active_hours = (9, 21)  # 9:00 to 21:00 MSK
@@ -26,8 +25,6 @@ class ChatActivityService:
             chat_id: Telegram chat ID
         """
         self._last_activity[chat_id] = datetime.now(self.moscow_tz)
-        # Reset dead chat flag when there's activity
-        self._dead_chat_sent[chat_id] = False
         logger.debug(f"Updated activity for chat {chat_id}")
 
     def is_chat_inactive(self, chat_id: int) -> bool:
@@ -44,10 +41,6 @@ class ChatActivityService:
         if chat_id not in self._last_activity:
             return False
 
-        # Already sent dead chat message
-        if self._dead_chat_sent.get(chat_id, False):
-            return False
-
         now = datetime.now(self.moscow_tz)
 
         # Check if current time is within active hours
@@ -62,12 +55,13 @@ class ChatActivityService:
 
     def mark_dead_chat_sent(self, chat_id: int) -> None:
         """
-        Mark that dead chat message was sent
+        Mark that dead chat message was sent and update last activity time
 
         Args:
             chat_id: Telegram chat ID
         """
-        self._dead_chat_sent[chat_id] = True
+        # Update last activity to current time so next message will be in 15 minutes
+        self._last_activity[chat_id] = datetime.now(self.moscow_tz)
         logger.info(f"Dead chat message sent to chat {chat_id}")
 
     def _is_active_hours(self, dt: datetime) -> bool:
