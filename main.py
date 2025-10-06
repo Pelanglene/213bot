@@ -2,12 +2,22 @@
 
 import sys
 
-from telegram import Update
+from telegram import BotCommand, Update
 from telegram.ext import Application
 
 from bot.config import settings
 from bot.handlers import register_all_handlers
 from bot.utils import setup_logger
+
+
+async def setup_bot_commands(app: Application) -> None:
+    """Setup bot command menu"""
+    commands = [
+        BotCommand("start", "Начать работу с ботом"),
+        BotCommand("ping", "Получить случайную фразу"),
+        BotCommand("help", "Показать помощь"),
+    ]
+    await app.bot.set_my_commands(commands)
 
 
 def main() -> None:
@@ -24,6 +34,9 @@ def main() -> None:
 
         # Register all handlers
         register_all_handlers(app)
+
+        # Setup bot commands menu
+        app.post_init = setup_bot_commands
 
         # Start polling
         logger.info("Bot is running. Press Ctrl+C to stop.")
