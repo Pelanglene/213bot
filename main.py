@@ -2,7 +2,12 @@
 
 import sys
 
-from telegram import BotCommand, Update
+from telegram import (
+    BotCommand,
+    BotCommandScopeAllGroupChats,
+    BotCommandScopeAllPrivateChats,
+    Update,
+)
 from telegram.ext import Application
 
 from bot.config import settings
@@ -17,7 +22,12 @@ async def setup_bot_commands(app: Application) -> None:
         BotCommand("ping", "Получить случайную фразу"),
         BotCommand("help", "Показать помощь"),
     ]
-    await app.bot.set_my_commands(commands)
+
+    # Set commands for private chats
+    await app.bot.set_my_commands(commands, scope=BotCommandScopeAllPrivateChats())
+
+    # Set commands for group chats
+    await app.bot.set_my_commands(commands, scope=BotCommandScopeAllGroupChats())
 
 
 def main() -> None:
