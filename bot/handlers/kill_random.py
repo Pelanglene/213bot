@@ -122,6 +122,27 @@ async def kill_random_command(
             logger.warning(f"No potential targets found in chat {chat.id}")
             return
 
+        # Log all potential targets with their details
+        logger.info(
+            f"Potential targets in chat {chat.id}: {len(potential_targets)} users"
+        )
+        target_info_list = []
+        for uid in potential_targets:
+            try:
+                member = await chat.get_member(uid)
+                username = (
+                    f"@{member.user.username}"
+                    if member.user.username
+                    else "no_username"
+                )
+                full_name = member.user.full_name or "Unknown"
+                target_info_list.append(f"{full_name} ({username}, id={uid})")
+            except Exception as e:
+                logger.debug(f"Could not get details for user {uid}: {e}")
+                target_info_list.append(f"id={uid}")
+
+        logger.info(f"Eligible users for /kill_random: {', '.join(target_info_list)}")
+
         # Select random target
         target_id = random.choice(potential_targets)
         target_member = await chat.get_member(target_id)
