@@ -12,6 +12,7 @@ from telegram.ext import Application
 
 from bot.config import settings
 from bot.handlers import register_all_handlers
+from bot.middlewares.user_tracker import register_user_tracker
 from bot.utils import setup_logger
 
 
@@ -20,6 +21,7 @@ async def setup_bot_commands(app: Application) -> None:
     commands = [
         BotCommand("start", "Начать работу с ботом"),
         BotCommand("ping", "Получить случайную фразу"),
+        BotCommand("kill_random", "Кикнуть случайного участника (только группы)"),
         BotCommand("help", "Показать помощь"),
     ]
 
@@ -41,6 +43,9 @@ def main() -> None:
 
         # Create application
         app = Application.builder().token(settings.BOT_TOKEN).build()
+
+        # Register user tracker middleware
+        register_user_tracker(app)
 
         # Register all handlers
         register_all_handlers(app)
