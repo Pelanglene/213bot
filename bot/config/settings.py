@@ -14,6 +14,9 @@ class Settings:
 
     def __init__(self):
         self.BOT_TOKEN: str = self._get_required_env("BOT_TOKEN")
+        self.API_ID: int = int(self._get_required_env("API_ID"))
+        self.API_HASH: str = self._get_required_env("API_HASH")
+        self.SESSION_NAME: str = os.getenv("SESSION_NAME", "bot_session")
         self.LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
         self.PHRASES_FILE: Path = Path(os.getenv("PHRASES_FILE", "data/phrases.json"))
         self.DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"

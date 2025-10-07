@@ -1,5 +1,7 @@
 # Core dependencies
 python-telegram-bot[job-queue]==20.7
+pyrogram==2.0.106
+tgcrypto==1.2.5
 
 # Development dependencies
 pytest==7.4.3
