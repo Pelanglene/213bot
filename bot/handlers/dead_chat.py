@@ -27,7 +27,9 @@ async def track_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if update.effective_user.is_bot:
             return
         chat_id = update.effective_chat.id
+        chat_title = update.effective_chat.title or "Private"
         chat_activity_service.update_activity(chat_id)
+        logger.debug(f"Activity tracked for chat_id={chat_id} ({chat_title})")
 
 
 async def check_inactive_chats(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -39,13 +41,16 @@ async def check_inactive_chats(context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     inactive_chats = chat_activity_service.get_inactive_chats()
 
+    if inactive_chats:
+        logger.info(f"Found {len(inactive_chats)} inactive chat(s): {inactive_chats}")
+
     for chat_id in inactive_chats:
         try:
             await context.bot.send_message(chat_id=chat_id, text="💀 dead chat")
             chat_activity_service.mark_dead_chat_sent(chat_id)
-            logger.info(f"Sent dead chat message to {chat_id}")
+            logger.info(f"Sent dead chat message to chat_id={chat_id}")
         except Exception as e:
-            logger.error(f"Failed to send dead chat message to {chat_id}: {e}")
+            logger.error(f"Failed to send dead chat message to chat_id={chat_id}: {e}")
 
 
 def register_dead_chat_handlers(app: Application) -> None:
