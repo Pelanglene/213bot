@@ -5,12 +5,13 @@ import logging
 from telegram import Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
+from bot.config import settings
 from bot.services.chat_activity_service import ChatActivityService
 
 logger = logging.getLogger(__name__)
 
 # Global service instance
-chat_activity_service = ChatActivityService()
+chat_activity_service = ChatActivityService(inactive_minutes=settings.DEAD_CHAT_MINUTES)
 
 
 async def track_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -65,6 +66,9 @@ def register_dead_chat_handlers(app: Application) -> None:
             interval=60,  # Check every 60 seconds
             first=60,  # Start after 60 seconds
         )
-        logger.info("Dead chat detection handler registered with 60s interval")
+        logger.info(
+            f"Dead chat detection handler registered with 60s check interval, "
+            f"{settings.DEAD_CHAT_MINUTES}min inactivity threshold"
+        )
     else:
         logger.warning("Job queue not available, dead chat detection disabled")

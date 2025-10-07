@@ -17,6 +17,7 @@ class Settings:
         self.LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
         self.PHRASES_FILE: Path = Path(os.getenv("PHRASES_FILE", "data/phrases.json"))
         self.DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
+        self.DEAD_CHAT_MINUTES: int = int(os.getenv("DEAD_CHAT_MINUTES", "15"))
 
     @staticmethod
     def _get_required_env(key: str) -> str:
