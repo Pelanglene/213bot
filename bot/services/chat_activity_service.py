@@ -24,8 +24,11 @@ class ChatActivityService:
         Args:
             chat_id: Telegram chat ID
         """
-        self._last_activity[chat_id] = datetime.now(self.moscow_tz)
-        logger.debug(f"Updated activity for chat {chat_id}")
+        now = datetime.now(self.moscow_tz)
+        self._last_activity[chat_id] = now
+        logger.debug(
+            f"Updated activity for chat_id={chat_id} at {now.strftime('%H:%M:%S')}"
+        )
 
     def is_chat_inactive(self, chat_id: int) -> bool:
         """
@@ -61,8 +64,12 @@ class ChatActivityService:
             chat_id: Telegram chat ID
         """
         # Update last activity to current time so next message will be in 15 minutes
-        self._last_activity[chat_id] = datetime.now(self.moscow_tz)
-        logger.info(f"Dead chat message sent to chat {chat_id}")
+        now = datetime.now(self.moscow_tz)
+        self._last_activity[chat_id] = now
+        next_check = (now + self.inactive_threshold).strftime("%H:%M:%S")
+        logger.info(
+            f"Dead chat marked for chat_id={chat_id}, next check at {next_check}"
+        )
 
     def _is_active_hours(self, dt: datetime) -> bool:
         """
@@ -84,6 +91,10 @@ class ChatActivityService:
         Returns:
             List of chat IDs
         """
+        total_chats = len(self._last_activity)
+        if total_chats > 0:
+            logger.debug(f"Checking {total_chats} tracked chat(s) for inactivity")
+
         return [
             chat_id for chat_id in self._last_activity if self.is_chat_inactive(chat_id)
         ]
