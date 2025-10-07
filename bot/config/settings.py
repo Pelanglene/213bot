@@ -21,6 +21,7 @@ class Settings:
         self.PHRASES_FILE: Path = Path(os.getenv("PHRASES_FILE", "data/phrases.json"))
         self.DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
         self.DEAD_CHAT_MINUTES: int = int(os.getenv("DEAD_CHAT_MINUTES", "15"))
+        self.KILL_RANDOM_MUTE_HOURS: int = int(os.getenv("KILL_RANDOM_MUTE_HOURS", "3"))
 
     @staticmethod
     def _get_required_env(key: str) -> str:

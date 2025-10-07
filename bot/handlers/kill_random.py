@@ -8,6 +8,7 @@ from telegram import Chat, ChatMember, ChatPermissions, Update
 from telegram.error import TelegramError
 from telegram.ext import Application, CommandHandler, ContextTypes
 
+from bot.config import settings
 from bot.middlewares.command_cooldown import cooldown_service, format_timedelta
 from bot.services.telegram_client_service import telegram_client_service
 
@@ -125,8 +126,9 @@ async def kill_random_command(
         target_id = random.choice(potential_targets)
         target_member = await chat.get_member(target_id)
 
-        # Mute the user for 3 hours - no permissions
-        mute_until = datetime.now() + timedelta(hours=3)
+        # Mute the user - no permissions
+        mute_hours = settings.KILL_RANDOM_MUTE_HOURS
+        mute_until = datetime.now() + timedelta(hours=mute_hours)
         permissions = ChatPermissions(can_send_messages=False)
         await chat.restrict_member(
             user_id=target_id, permissions=permissions, until_date=mute_until
@@ -137,13 +139,21 @@ async def kill_random_command(
         if target_member.user.username:
             target_name = f"@{target_member.user.username}"
 
+        # Format mute duration message
+        if mute_hours == 1:
+            mute_text = "1 час"
+        elif 2 <= mute_hours <= 4:
+            mute_text = f"{mute_hours} часа"
+        else:
+            mute_text = f"{mute_hours} часов"
+
         await update.message.reply_text(
-            f"🎯 Рулетка выбрала жертву: {target_name}\n" f"🔇 Мут на 3 часа!",
+            f"🎯 Рулетка выбрала жертву: {target_name}\n" f"🔇 Мут на {mute_text}!",
             reply_to_message_id=update.message.message_id,
         )
 
         logger.info(
-            f"User {target_id} ({target_name}) was muted for 3 hours in chat {chat.id} "
+            f"User {target_id} ({target_name}) was muted for {mute_hours} hours in chat {chat.id} "
             f"by /kill_random command from user {user.id}"
         )
 
