@@ -16,6 +16,7 @@ services:
       - DEBUG=${DEBUG:-false}
       - PHRASES_FILE=${PHRASES_FILE:-data/phrases.json}
       - DEAD_CHAT_MINUTES=${DEAD_CHAT_MINUTES:-15}
+      - KILL_RANDOM_MUTE_HOURS=${KILL_RANDOM_MUTE_HOURS:-1}
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
