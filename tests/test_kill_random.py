@@ -158,20 +158,21 @@ async def test_kill_random_success(mock_update_group, mock_context):
     mock_update_group.effective_chat.get_administrators = AsyncMock(
         return_value=[bot_member]
     )
-    mock_update_group.effective_chat.ban_member = AsyncMock()
-    mock_update_group.effective_chat.unban_member = AsyncMock()
+    mock_update_group.effective_chat.restrict_member = AsyncMock()
 
     with patch("bot.handlers.kill_random.random.choice", return_value=222):
         await kill_random_command(mock_update_group, mock_context)
 
-    # Check that ban and unban were called
-    mock_update_group.effective_chat.ban_member.assert_called_once_with(222)
-    mock_update_group.effective_chat.unban_member.assert_called_once_with(222)
+    # Check that restrict_member was called
+    mock_update_group.effective_chat.restrict_member.assert_called_once()
+    call_args = mock_update_group.effective_chat.restrict_member.call_args
+    assert call_args[1]["user_id"] == 222
 
     # Check response message
     mock_update_group.message.reply_text.assert_called_once()
     call_args = mock_update_group.message.reply_text.call_args
     assert "Рулетка выбрала жертву" in call_args[0][0]
+    assert "Мут на 3 часа" in call_args[0][0]
     assert "@target_user" in call_args[0][0]
 
 
@@ -205,7 +206,7 @@ async def test_kill_random_telegram_error(mock_update_group, mock_context):
     mock_update_group.effective_chat.get_administrators = AsyncMock(
         return_value=[bot_member]
     )
-    mock_update_group.effective_chat.ban_member = AsyncMock(
+    mock_update_group.effective_chat.restrict_member = AsyncMock(
         side_effect=TelegramError("Test error")
     )
 
@@ -215,7 +216,7 @@ async def test_kill_random_telegram_error(mock_update_group, mock_context):
     # Check error message
     mock_update_group.message.reply_text.assert_called_once()
     call_args = mock_update_group.message.reply_text.call_args
-    assert "Ошибка при попытке кика" in call_args[0][0]
+    assert "Ошибка при попытке мута" in call_args[0][0]
 
 
 @pytest.mark.asyncio
