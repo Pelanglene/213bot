@@ -12,6 +12,7 @@ from telegram.ext import Application
 
 from bot.config import settings
 from bot.handlers import register_all_handlers
+from bot.middlewares import register_anti_bot_filter
 from bot.middlewares.user_tracker import register_user_tracker
 from bot.services.telegram_client_service import telegram_client_service
 from bot.utils import setup_logger
@@ -27,6 +28,7 @@ async def post_init(app: Application) -> None:
         BotCommand("start", "Начать работу с ботом"),
         BotCommand("ping", "Получить случайную фразу"),
         BotCommand("kill_random", "Кикнуть случайного участника (только группы)"),
+        BotCommand("can_delete", "Проверить право удалять сообщения"),
         BotCommand("help", "Показать помощь"),
     ]
 
@@ -54,6 +56,9 @@ def main() -> None:
 
         # Create application
         app = Application.builder().token(settings.BOT_TOKEN).build()
+
+        # Register anti-bot filter BEFORE everything else
+        register_anti_bot_filter(app)
 
         # Register user tracker middleware
         register_user_tracker(app)

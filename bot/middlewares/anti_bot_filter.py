@@ -1,0 +1,106 @@
+"""Middleware to delete interactions with a specific bot"""
+
+import logging
+from typing import Iterable, Optional
+
+from telegram import Message, MessageEntity, Update
+from telegram.ext import Application, ContextTypes, TypeHandler
+
+logger = logging.getLogger(__name__)
+
+
+TARGET_BOT_USERNAME = "twoonethreein_bot"  # without leading '@'
+
+
+def _iter_entities(message: Message) -> Iterable[tuple[str, MessageEntity]]:
+    """Yield (text, entity) pairs for both text and caption entities."""
+    if message.text and message.entities:
+        for entity in message.entities:
+            yield message.text, entity
+    if message.caption and message.caption_entities:
+        for entity in message.caption_entities:
+            yield message.caption, entity
+
+
+def _entity_text(text: str, entity: MessageEntity) -> Optional[str]:
+    """Extract the substring corresponding to an entity.
+
+    Returns None if the slice is invalid for any reason.
+    """
+    try:
+        return text[entity.offset : entity.offset + entity.length]
+    except Exception:
+        return None
+
+
+def _mentions_target_bot(message: Message) -> bool:
+    """Check whether message mentions or addresses the target bot."""
+    for text, entity in _iter_entities(message):
+        # Entity types can be str or MessageEntityType; support both styles
+        etype = getattr(entity, "type", None)
+        if etype in {
+            "mention",
+            MessageEntity.MENTION,
+            "bot_command",
+            MessageEntity.BOT_COMMAND,
+        }:
+            piece = _entity_text(text, entity)
+            if not piece:
+                continue
+            lower_piece = piece.lower()
+            # Handles '@twoonethreein_bot' and '/cmd@twoonethreein_bot'
+            if TARGET_BOT_USERNAME in lower_piece.lstrip("@"):
+                return True
+    return False
+
+
+def _is_from_target_bot(message: Message) -> bool:
+    """Check whether the message originates from the target bot."""
+    if message.from_user and message.from_user.is_bot:
+        if (message.from_user.username or "").lower() == TARGET_BOT_USERNAME:
+            return True
+
+    # Forwarded messages from the target bot
+    if message.forward_from and message.forward_from.is_bot:
+        if (message.forward_from.username or "").lower() == TARGET_BOT_USERNAME:
+            return True
+
+    # Inline messages sent via the target bot
+    if (
+        message.via_bot
+        and (message.via_bot.username or "").lower() == TARGET_BOT_USERNAME
+    ):
+        return True
+
+    return False
+
+
+async def filter_twoonethreein(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Delete messages calling or sent by the specific bot.
+
+    - Deletes any message from @twoonethreein_bot
+    - Deletes any message mentioning or addressing @twoonethreein_bot
+    """
+    message = update.effective_message
+    if not message:
+        return
+
+    try:
+        if _is_from_target_bot(message) or _mentions_target_bot(message):
+            await message.delete()
+            logger.info(
+                "Deleted message %s in chat %s due to target bot interaction",
+                message.message_id,
+                message.chat_id if message.chat else "unknown",
+            )
+    except Exception as exc:
+        # Deletion may fail due to missing admin rights or message already deleted
+        logger.warning(f"Failed to delete message: {exc}")
+
+
+def register_anti_bot_filter(app: Application) -> None:
+    """Register anti-bot filter to run before other handlers."""
+    app.add_handler(TypeHandler(Update, filter_twoonethreein), group=-2)
+    logger.info("Anti-bot filter middleware registered")
