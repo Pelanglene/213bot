@@ -232,7 +232,7 @@ async def test_kill_random_cooldown_blocks_all_users(mock_update_group, mock_con
     # Check that cooldown message was sent
     mock_update_group.message.reply_text.assert_called_once()
     call_args = mock_update_group.message.reply_text.call_args
-    assert "уже использовалась сегодня" in call_args[0][0]
+    assert "Попробуйте снова через" in call_args[0][0]
 
     # Clean up
     cooldown_service._last_used.clear()
