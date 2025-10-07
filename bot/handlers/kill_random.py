@@ -35,9 +35,9 @@ async def kill_random_command(
         )
         return
 
-    # Check global cooldown (1 hour)
+    # Check per-chat cooldown (1 hour)
     can_execute, remaining = cooldown_service.can_execute(
-        "kill_random", cooldown_hours=1
+        "kill_random", cooldown_hours=1, chat_id=chat.id
     )
     if not can_execute and remaining is not None:
         remaining_str = format_timedelta(remaining)
@@ -47,6 +47,7 @@ async def kill_random_command(
             f"Remaining: {remaining_str}"
         )
         await update.message.reply_text(
+            f"⏳ Команда уже использовалась в этом чате. "
             f"Попробуйте снова через {remaining_str}.",
             reply_to_message_id=update.message.message_id,
         )
@@ -146,8 +147,8 @@ async def kill_random_command(
             f"by /kill_random command from user {user.id}"
         )
 
-        # Mark command as used (start 1h cooldown)
-        cooldown_service.mark_used("kill_random")
+        # Mark command as used (start 1h cooldown for this chat)
+        cooldown_service.mark_used("kill_random", chat_id=chat.id)
 
     except TelegramError as e:
         logger.error(f"Telegram error in /kill_random: {e}", exc_info=True)

@@ -12,14 +12,29 @@ logger = logging.getLogger(__name__)
 
 
 class CommandCooldownService:
-    """Service to track global command cooldowns"""
+    """Service to track global and per-chat command cooldowns"""
 
     def __init__(self):
         self._last_used: Dict[str, datetime] = {}
         self.moscow_tz = ZoneInfo("Europe/Moscow")
 
+    def _get_key(self, command: str, chat_id: Optional[int] = None) -> str:
+        """
+        Generate key for cooldown tracking
+
+        Args:
+            command: Command name
+            chat_id: Optional chat ID for per-chat cooldowns
+
+        Returns:
+            Key string
+        """
+        if chat_id is None:
+            return command
+        return f"{command}:{chat_id}"
+
     def can_execute(
-        self, command: str, cooldown_hours: int = 24
+        self, command: str, cooldown_hours: int = 24, chat_id: Optional[int] = None
     ) -> tuple[bool, Optional[timedelta]]:
         """
         Check if command can be executed based on cooldown
@@ -27,16 +42,18 @@ class CommandCooldownService:
         Args:
             command: Command name (e.g., 'kill_random')
             cooldown_hours: Cooldown period in hours
+            chat_id: Optional chat ID for per-chat cooldowns
 
         Returns:
             Tuple of (can_execute: bool, remaining_time: Optional[timedelta])
         """
         now = datetime.now(self.moscow_tz)
+        key = self._get_key(command, chat_id)
 
-        if command not in self._last_used:
+        if key not in self._last_used:
             return True, None
 
-        last_used = self._last_used[command]
+        last_used = self._last_used[key]
         time_passed = now - last_used
         cooldown = timedelta(hours=cooldown_hours)
 
@@ -46,19 +63,24 @@ class CommandCooldownService:
         remaining = cooldown - time_passed
         return False, remaining
 
-    def mark_used(self, command: str) -> None:
+    def mark_used(self, command: str, chat_id: Optional[int] = None) -> None:
         """
         Mark command as used
 
         Args:
             command: Command name
+            chat_id: Optional chat ID for per-chat cooldowns
         """
         now = datetime.now(self.moscow_tz)
-        self._last_used[command] = now
-        logger.info(f"Command '{command}' used at {now.strftime('%Y-%m-%d %H:%M:%S')}")
+        key = self._get_key(command, chat_id)
+        self._last_used[key] = now
+        logger.info(
+            f"Command '{command}' used in chat {chat_id or 'global'} "
+            f"at {now.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
 
     def get_remaining_cooldown(
-        self, command: str, cooldown_hours: int = 24
+        self, command: str, cooldown_hours: int = 24, chat_id: Optional[int] = None
     ) -> Optional[timedelta]:
         """
         Get remaining cooldown time for a command
@@ -66,11 +88,12 @@ class CommandCooldownService:
         Args:
             command: Command name
             cooldown_hours: Cooldown period in hours
+            chat_id: Optional chat ID for per-chat cooldowns
 
         Returns:
             Remaining time or None if command can be executed
         """
-        _, remaining = self.can_execute(command, cooldown_hours)
+        _, remaining = self.can_execute(command, cooldown_hours, chat_id)
         return remaining
 
 
