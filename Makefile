@@ -1,4 +1,4 @@
-.PHONY: help venv install install-dev run test lint format docker-build docker-up docker-down docker-logs clean
+.PHONY: help venv install install-dev authorize run test lint format docker-build docker-up docker-down docker-logs clean
 
 VENV = venv
 PYTHON = $(VENV)/bin/python
@@ -9,6 +9,7 @@ help:
 	@echo "  make venv         - Create virtual environment"
 	@echo "  make install      - Install production dependencies"
 	@echo "  make install-dev  - Install development dependencies"
+	@echo "  make authorize    - Authorize Telegram session (run before docker-up)"
 	@echo "  make run          - Run the bot locally"
 	@echo "  make test         - Run tests"
 	@echo "  make lint         - Run linters"
@@ -28,6 +29,9 @@ install: venv
 
 install-dev: venv
 	$(PIP) install -r requirements-dev.txt
+
+authorize: venv
+	$(PYTHON) scripts/authorize_session.py
 
 run:
 	$(PYTHON) main.py

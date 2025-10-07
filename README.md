@@ -30,12 +30,19 @@ echo "API_ID=YOUR_API_ID" >> .env
 echo "API_HASH=YOUR_API_HASH" >> .env
 ```
 
-3. Запустите:
+3. Установите зависимости и авторизуйте сессию:
+```bash
+make install
+make authorize
+```
+   Введите номер телефона и код подтверждения из Telegram.
+
+4. Запустите:
 ```bash
 make docker-up
 ```
 
-4. Просмотр логов:
+5. Просмотр логов:
 ```bash
 make docker-logs
 ```
@@ -49,10 +56,17 @@ make install
 
 2. Создайте `.env`:
 ```bash
-echo "BOT_TOKEN=YOUR_TOKEN" > .env
+echo "BOT_TOKEN=YOUR_BOT_TOKEN" > .env
+echo "API_ID=YOUR_API_ID" >> .env
+echo "API_HASH=YOUR_API_HASH" >> .env
 ```
 
-3. Запустите:
+3. Авторизуйте Telegram сессию:
+```bash
+make authorize
+```
+
+4. Запустите:
 ```bash
 make run
 ```
@@ -82,6 +96,7 @@ make run
 ```bash
 make help          # Список всех команд
 make install-dev   # Установка dev зависимостей
+make authorize     # Авторизация Telegram сессии
 make run          # Запуск бота
 make test         # Запуск тестов
 make lint         # Проверка кода
@@ -135,7 +150,7 @@ DEAD_CHAT_MINUTES=15              # Минут неактивности для d
 
 **Кулдаун:** 1 час между использованиями команды в любом чате.
 
-**Примечание:** Для работы команды требуется авторизованный Telegram аккаунт (не бот). При первом запуске может потребоваться ввод кода подтверждения.
+**Примечание:** Для работы команды требуется авторизованный Telegram аккаунт (не бот). Используйте `make authorize` для авторизации перед запуском бота.
 
 ## Тестирование
 
