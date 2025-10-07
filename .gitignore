@@ -37,6 +37,10 @@ dmypy.json
 *.log
 logs/
 
+# Telegram sessions
+*.session
+*.session-journal
+
 # Distribution
 build/
 dist/
