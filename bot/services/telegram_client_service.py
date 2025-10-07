@@ -19,15 +19,26 @@ class TelegramClientService:
         self._initialized = False
 
     async def initialize(self):
-        """Initialize Pyrogram client"""
+        """Initialize Pyrogram client if credentials are provided.
+
+        If credentials are missing or initialization fails, the service remains
+        unavailable but the application continues to run.
+        """
         if self._initialized:
+            return
+
+        # Check if credentials are provided
+        if not settings.API_ID or not settings.API_HASH:
+            logger.warning(
+                "API_ID or API_HASH not set. Telegram Client features are disabled."
+            )
             return
 
         try:
             self.client = Client(
                 name=settings.SESSION_NAME,
-                api_id=settings.API_ID,
-                api_hash=settings.API_HASH,
+                api_id=settings.API_ID,  # type: ignore[arg-type]
+                api_hash=settings.API_HASH,  # type: ignore[arg-type]
                 workdir="./data",
             )
             await self.client.start()
@@ -35,7 +46,9 @@ class TelegramClientService:
             logger.info("Telegram Client API service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize Telegram Client: {e}", exc_info=True)
-            raise
+            # Do not raise; run bot without client features
+            self.client = None
+            self._initialized = False
 
     async def close(self):
         """Close Pyrogram client"""
@@ -110,6 +123,10 @@ class TelegramClientService:
                 exc_info=True,
             )
             raise
+
+    def is_available(self) -> bool:
+        """Return True if the client API is initialized and available."""
+        return bool(self.client and self._initialized)
 
 
 # Global service instance
