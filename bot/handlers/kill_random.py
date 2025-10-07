@@ -100,6 +100,17 @@ async def kill_random_command(
                 f"(excluded {len(admin_ids)} admins)"
             )
 
+        except ConnectionError as e:
+            logger.error(
+                f"Connection error when getting members for chat {chat.id}: {e}",
+                exc_info=True,
+            )
+            await update.message.reply_text(
+                "❌ Не удалось получить список участников чата из-за проблем с соединением. "
+                "Попробуйте позже.",
+                reply_to_message_id=update.message.message_id,
+            )
+            return
         except Exception as e:
             logger.error(
                 f"Failed to get members using Client API for chat {chat.id}: {e}",
