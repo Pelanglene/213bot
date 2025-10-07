@@ -133,10 +133,7 @@ async def global_command_cooldown(
             f"in chat {chat_id}. Remaining cooldown: {remaining_str}"
         )
 
-        await update.message.reply_text(
-            f"⏳ Эта команда уже использовалась сегодня.\n"
-            f"Попробуйте снова через {remaining_str}."
-        )
+        await update.message.reply_text(f"Попробуйте снова через {remaining_str}.")
         return False
 
     return True

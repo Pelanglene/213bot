@@ -2,8 +2,9 @@
 
 import logging
 import random
+from datetime import datetime, timedelta
 
-from telegram import Chat, ChatMember, Update
+from telegram import Chat, ChatMember, ChatPermissions, Update
 from telegram.error import TelegramError
 from telegram.ext import Application, CommandHandler, ContextTypes
 
@@ -33,9 +34,9 @@ async def kill_random_command(
         )
         return
 
-    # Check global cooldown (24 hours)
+    # Check global cooldown (1 hour)
     can_execute, remaining = cooldown_service.can_execute(
-        "kill_random", cooldown_hours=24
+        "kill_random", cooldown_hours=1
     )
     if not can_execute and remaining is not None:
         remaining_str = format_timedelta(remaining)
@@ -45,7 +46,6 @@ async def kill_random_command(
             f"Remaining: {remaining_str}"
         )
         await update.message.reply_text(
-            f"⏳ Эта команда уже использовалась сегодня.\n"
             f"Попробуйте снова через {remaining_str}.",
             reply_to_message_id=update.message.message_id,
         )
@@ -107,21 +107,46 @@ async def kill_random_command(
         # If we don't have any recent users, we need to notify
         if not potential_targets:
             await update.message.reply_text(
-                "⚠️ Не могу найти участников для кика. "
+                "⚠️ Не могу найти участников для мута. "
                 "Бот еще не накопил информацию об активных участниках чата.",
                 reply_to_message_id=update.message.message_id,
             )
             logger.warning(f"No potential targets found in chat {chat.id}")
             return
 
+        # Log all potential targets
+        logger.info(
+            f"Potential targets in chat {chat.id}: "
+            f"{len(potential_targets)} users - {potential_targets}"
+        )
+
+        # Get detailed info about potential targets for logging
+        target_names = []
+        for uid in potential_targets:
+            try:
+                member = await chat.get_member(uid)
+                username = (
+                    f"@{member.user.username}"
+                    if member.user.username
+                    else "no_username"
+                )
+                target_names.append(f"{member.user.full_name} ({username}, id={uid})")
+            except Exception as e:
+                logger.debug(f"Could not get member info for {uid}: {e}")
+                target_names.append(f"id={uid}")
+
+        logger.info(f"Available targets: {', '.join(target_names)}")
+
         # Select random target
         target_id = random.choice(potential_targets)
         target_member = await chat.get_member(target_id)
 
-        # Kick the user
-        await chat.ban_member(target_id)
-        # Immediately unban to allow them to rejoin
-        await chat.unban_member(target_id)
+        # Mute the user for 3 hours - no permissions
+        mute_until = datetime.now() + timedelta(hours=3)
+        permissions = ChatPermissions(can_send_messages=False)
+        await chat.restrict_member(
+            user_id=target_id, permissions=permissions, until_date=mute_until
+        )
 
         # Get target name
         target_name = target_member.user.full_name
@@ -129,22 +154,22 @@ async def kill_random_command(
             target_name = f"@{target_member.user.username}"
 
         await update.message.reply_text(
-            f"🎯 Рулетка выбрала жертву: {target_name}\n" f"👋 Пока-пока!",
+            f"🎯 Рулетка выбрала жертву: {target_name}\n" f"🔇 Мут на 3 часа!",
             reply_to_message_id=update.message.message_id,
         )
 
         logger.info(
-            f"User {target_id} ({target_name}) was kicked from chat {chat.id} "
+            f"User {target_id} ({target_name}) was muted for 3 hours in chat {chat.id} "
             f"by /kill_random command from user {user.id}"
         )
 
-        # Mark command as used (start 24h cooldown)
+        # Mark command as used (start 1h cooldown)
         cooldown_service.mark_used("kill_random")
 
     except TelegramError as e:
         logger.error(f"Telegram error in /kill_random: {e}", exc_info=True)
         await update.message.reply_text(
-            f"❌ Ошибка при попытке кика: {str(e)}",
+            f"❌ Ошибка при попытке мута: {str(e)}",
             reply_to_message_id=update.message.message_id,
         )
     except Exception as e:
