@@ -7,6 +7,8 @@ from telegram import Chat, ChatMember, Update
 from telegram.error import TelegramError
 from telegram.ext import Application, CommandHandler, ContextTypes
 
+from bot.middlewares.command_cooldown import cooldown_service, format_timedelta
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,8 +33,36 @@ async def kill_random_command(
         )
         return
 
+    # Check if user is admin (admins can bypass cooldown)
+    try:
+        user_member = await chat.get_member(user.id)
+        is_admin = user_member.status in [ChatMember.ADMINISTRATOR, ChatMember.OWNER]
+    except Exception as e:
+        logger.warning(f"Could not check admin status for user {user.id}: {e}")
+        is_admin = False
+
+    # Check global cooldown (24 hours) - skip for admins
+    if not is_admin:
+        can_execute, remaining = cooldown_service.can_execute(
+            "kill_random", cooldown_hours=24
+        )
+        if not can_execute and remaining is not None:
+            remaining_str = format_timedelta(remaining)
+            logger.warning(
+                f"User {user.id} ({user.username}) tried to use /kill_random "
+                f"in chat {chat.id} but command is on cooldown. "
+                f"Remaining: {remaining_str}"
+            )
+            await update.message.reply_text(
+                f"⏳ Эта команда уже использовалась сегодня.\n"
+                f"Попробуйте снова через {remaining_str}.",
+                reply_to_message_id=update.message.message_id,
+            )
+            return
+
     logger.info(
         f"User {user.id} ({user.username}) used /kill_random command in chat {chat.id}"
+        + (" [ADMIN]" if is_admin else "")
     )
 
     try:
@@ -117,6 +147,9 @@ async def kill_random_command(
             f"User {target_id} ({target_name}) was kicked from chat {chat.id} "
             f"by /kill_random command from user {user.id}"
         )
+
+        # Mark command as used (start 24h cooldown)
+        cooldown_service.mark_used("kill_random")
 
     except TelegramError as e:
         logger.error(f"Telegram error in /kill_random: {e}", exc_info=True)
