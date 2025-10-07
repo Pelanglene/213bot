@@ -13,11 +13,16 @@ from telegram.ext import Application
 from bot.config import settings
 from bot.handlers import register_all_handlers
 from bot.middlewares.user_tracker import register_user_tracker
+from bot.services.telegram_client_service import telegram_client_service
 from bot.utils import setup_logger
 
 
-async def setup_bot_commands(app: Application) -> None:
-    """Setup bot command menu"""
+async def post_init(app: Application) -> None:
+    """Post-initialization setup"""
+    # Initialize Telegram Client API service
+    await telegram_client_service.initialize()
+
+    # Setup bot command menu
     commands = [
         BotCommand("start", "Начать работу с ботом"),
         BotCommand("ping", "Получить случайную фразу"),
@@ -30,6 +35,12 @@ async def setup_bot_commands(app: Application) -> None:
 
     # Set commands for group chats
     await app.bot.set_my_commands(commands, scope=BotCommandScopeAllGroupChats())
+
+
+async def post_shutdown(app: Application) -> None:
+    """Post-shutdown cleanup"""
+    # Close Telegram Client API service
+    await telegram_client_service.close()
 
 
 def main() -> None:
@@ -50,8 +61,9 @@ def main() -> None:
         # Register all handlers
         register_all_handlers(app)
 
-        # Setup bot commands menu
-        app.post_init = setup_bot_commands
+        # Setup post-init and post-shutdown hooks
+        app.post_init = post_init
+        app.post_shutdown = post_shutdown
 
         # Start polling
         logger.info("Bot is running. Press Ctrl+C to stop.")

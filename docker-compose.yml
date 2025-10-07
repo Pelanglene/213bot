@@ -9,12 +9,15 @@ services:
       - .env
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
+      - API_ID=${API_ID}
+      - API_HASH=${API_HASH}
+      - SESSION_NAME=${SESSION_NAME:-bot_session}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DEBUG=${DEBUG:-false}
       - PHRASES_FILE=${PHRASES_FILE:-data/phrases.json}
       - DEAD_CHAT_MINUTES=${DEAD_CHAT_MINUTES:-15}
     volumes:
-      - ./data:/app/data:ro
+      - ./data:/app/data
       - ./logs:/app/logs
     healthcheck:
       test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]

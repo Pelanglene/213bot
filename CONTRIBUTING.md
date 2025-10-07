@@ -163,10 +163,10 @@ logger = logging.getLogger(__name__)
 
 class MyService:
     """Description of service"""
-    
+
     def __init__(self):
         pass
-    
+
     def do_something(self) -> str:
         """Do something useful"""
         return "result"
@@ -258,4 +258,3 @@ docs: update README with new commands
 - Соответствие стандартам
 
 Спасибо за вклад! 🚀
-

@@ -2,8 +2,6 @@
 
 from time import sleep
 
-import pytest
-
 from bot.middlewares.rate_limit import RateLimiter
 
 
