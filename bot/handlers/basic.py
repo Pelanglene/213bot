@@ -25,6 +25,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         "/start - это сообщение\n"
         "/ping - пинг (макс. 1 запрос в секунду)\n"
         "/kill_random - кикнуть случайного участника (только группы)\n"
+        "/can_delete - проверить права на удаление сообщений (этот чат)\n"
         "/help - помощь"
     )
 
@@ -42,6 +43,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "/start - начать работу с ботом\n"
         "/ping - пинг (ограничение: 1 раз в секунду)\n"
         "/kill_random - кикнуть случайного участника (только для групп)\n"
+        "/can_delete - проверить, может ли бот удалять сообщения в чате\n"
         "/help - показать это сообщение"
     )
 
