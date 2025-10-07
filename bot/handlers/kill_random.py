@@ -89,22 +89,35 @@ async def kill_random_command(
         admins = await chat.get_administrators()
         admin_ids = {admin.user.id for admin in admins}
 
-        # Collect recent message senders as potential targets
-        # This is a workaround since we can't easily get all members
-        # We'll use a fallback: try to get members from recent messages
         potential_targets = []
 
-        # Try to get members from chat history
-        # Note: This won't work for all chats, but it's the best we can do
-        # without storing member information
+        # Try to get chat members (works only for small groups <200 members)
+        try:
+            members_count = await chat.get_member_count()
+            logger.info(f"Chat {chat.id} has {members_count} members")
+
+            # For small groups, try to get member list through admins
+            # Note: Telegram Bot API doesn't provide direct method to get all members
+            # This is a limitation of the API for privacy reasons
+            if members_count <= 200:
+                logger.info(f"Attempting to get members from small group {chat.id}")
+                # Unfortunately, there's no direct API method to get all members
+                # We can only track them through messages
+        except Exception as e:
+            logger.debug(f"Could not get member count for chat {chat.id}: {e}")
+
+        # Fallback: use recent users from message tracking
         if context.chat_data and "recent_users" in context.chat_data:
             potential_targets = [
                 uid
                 for uid in context.chat_data["recent_users"]
                 if uid not in admin_ids and uid != context.bot.id
             ]
+            logger.info(
+                f"Using {len(potential_targets)} recent users from message tracking"
+            )
 
-        # If we don't have any recent users, we need to notify
+        # If we still don't have any users, notify
         if not potential_targets:
             await update.message.reply_text(
                 "⚠️ Не могу найти участников для мута. "
