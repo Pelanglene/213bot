@@ -33,36 +33,26 @@ async def kill_random_command(
         )
         return
 
-    # Check if user is admin (admins can bypass cooldown)
-    try:
-        user_member = await chat.get_member(user.id)
-        is_admin = user_member.status in [ChatMember.ADMINISTRATOR, ChatMember.OWNER]
-    except Exception as e:
-        logger.warning(f"Could not check admin status for user {user.id}: {e}")
-        is_admin = False
-
-    # Check global cooldown (24 hours) - skip for admins
-    if not is_admin:
-        can_execute, remaining = cooldown_service.can_execute(
-            "kill_random", cooldown_hours=24
+    # Check global cooldown (24 hours)
+    can_execute, remaining = cooldown_service.can_execute(
+        "kill_random", cooldown_hours=24
+    )
+    if not can_execute and remaining is not None:
+        remaining_str = format_timedelta(remaining)
+        logger.warning(
+            f"User {user.id} ({user.username}) tried to use /kill_random "
+            f"in chat {chat.id} but command is on cooldown. "
+            f"Remaining: {remaining_str}"
         )
-        if not can_execute and remaining is not None:
-            remaining_str = format_timedelta(remaining)
-            logger.warning(
-                f"User {user.id} ({user.username}) tried to use /kill_random "
-                f"in chat {chat.id} but command is on cooldown. "
-                f"Remaining: {remaining_str}"
-            )
-            await update.message.reply_text(
-                f"⏳ Эта команда уже использовалась сегодня.\n"
-                f"Попробуйте снова через {remaining_str}.",
-                reply_to_message_id=update.message.message_id,
-            )
-            return
+        await update.message.reply_text(
+            f"⏳ Эта команда уже использовалась сегодня.\n"
+            f"Попробуйте снова через {remaining_str}.",
+            reply_to_message_id=update.message.message_id,
+        )
+        return
 
     logger.info(
         f"User {user.id} ({user.username}) used /kill_random command in chat {chat.id}"
-        + (" [ADMIN]" if is_admin else "")
     )
 
     try:

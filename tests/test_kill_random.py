@@ -130,14 +130,15 @@ async def test_kill_random_no_recent_users(mock_update_group, mock_context):
 @pytest.mark.asyncio
 async def test_kill_random_success(mock_update_group, mock_context):
     """Test successful kick of random user"""
+    from bot.middlewares.command_cooldown import cooldown_service
+
+    # Clean up cooldown state
+    cooldown_service._last_used.clear()
+
     # Mock bot member as admin with permissions
     bot_member = MagicMock()
     bot_member.status = ChatMember.ADMINISTRATOR
     bot_member.can_restrict_members = True
-
-    # Mock user member as admin (to bypass cooldown)
-    user_member = MagicMock()
-    user_member.status = ChatMember.ADMINISTRATOR
 
     # Mock target user
     target_member = MagicMock()
@@ -148,8 +149,6 @@ async def test_kill_random_success(mock_update_group, mock_context):
     async def get_member_side_effect(user_id):
         if user_id == mock_context.bot.id:
             return bot_member
-        if user_id == mock_update_group.effective_user.id:
-            return user_member
         return target_member
 
     mock_update_group.effective_chat.get_member = AsyncMock(
@@ -179,14 +178,15 @@ async def test_kill_random_success(mock_update_group, mock_context):
 @pytest.mark.asyncio
 async def test_kill_random_telegram_error(mock_update_group, mock_context):
     """Test handling of Telegram API errors"""
+    from bot.middlewares.command_cooldown import cooldown_service
+
+    # Clean up cooldown state
+    cooldown_service._last_used.clear()
+
     # Mock bot member as admin with permissions
     bot_member = MagicMock()
     bot_member.status = ChatMember.ADMINISTRATOR
     bot_member.can_restrict_members = True
-
-    # Mock user member as admin (to bypass cooldown)
-    user_member = MagicMock()
-    user_member.status = ChatMember.ADMINISTRATOR
 
     target_member = MagicMock()
     target_member.user.id = 222
@@ -196,8 +196,6 @@ async def test_kill_random_telegram_error(mock_update_group, mock_context):
     async def get_member_side_effect(user_id):
         if user_id == mock_context.bot.id:
             return bot_member
-        if user_id == mock_update_group.effective_user.id:
-            return user_member
         return target_member
 
     mock_update_group.effective_chat.get_member = AsyncMock(
@@ -221,18 +219,12 @@ async def test_kill_random_telegram_error(mock_update_group, mock_context):
 
 
 @pytest.mark.asyncio
-async def test_kill_random_cooldown_for_regular_user(mock_update_group, mock_context):
-    """Test that regular users are blocked by cooldown"""
+async def test_kill_random_cooldown_blocks_all_users(mock_update_group, mock_context):
+    """Test that all users are blocked by cooldown"""
     from bot.middlewares.command_cooldown import cooldown_service
 
     # Mark command as already used
     cooldown_service.mark_used("kill_random")
-
-    # Mock user member as regular member (not admin)
-    user_member = MagicMock()
-    user_member.status = ChatMember.MEMBER
-
-    mock_update_group.effective_chat.get_member = AsyncMock(return_value=user_member)
 
     await kill_random_command(mock_update_group, mock_context)
 
@@ -240,58 +232,6 @@ async def test_kill_random_cooldown_for_regular_user(mock_update_group, mock_con
     mock_update_group.message.reply_text.assert_called_once()
     call_args = mock_update_group.message.reply_text.call_args
     assert "уже использовалась сегодня" in call_args[0][0]
-
-    # Clean up
-    cooldown_service._last_used.clear()
-
-
-@pytest.mark.asyncio
-async def test_kill_random_admin_bypass_cooldown(mock_update_group, mock_context):
-    """Test that admins can bypass cooldown"""
-    from bot.middlewares.command_cooldown import cooldown_service
-
-    # Mark command as already used
-    cooldown_service.mark_used("kill_random")
-
-    # Mock bot member as admin
-    bot_member = MagicMock()
-    bot_member.status = ChatMember.ADMINISTRATOR
-    bot_member.can_restrict_members = True
-
-    # Mock user member as admin
-    user_member = MagicMock()
-    user_member.status = ChatMember.ADMINISTRATOR
-
-    # Mock target user
-    target_member = MagicMock()
-    target_member.user.id = 333
-    target_member.user.full_name = "Target User"
-    target_member.user.username = "target"
-
-    async def get_member_side_effect(user_id):
-        if user_id == mock_context.bot.id:
-            return bot_member
-        if user_id == mock_update_group.effective_user.id:
-            return user_member
-        return target_member
-
-    mock_update_group.effective_chat.get_member = AsyncMock(
-        side_effect=get_member_side_effect
-    )
-    mock_update_group.effective_chat.get_member_count = AsyncMock(return_value=10)
-    mock_update_group.effective_chat.get_administrators = AsyncMock(
-        return_value=[bot_member]
-    )
-    mock_update_group.effective_chat.ban_member = AsyncMock()
-    mock_update_group.effective_chat.unban_member = AsyncMock()
-
-    with patch("bot.handlers.kill_random.random.choice", return_value=333):
-        await kill_random_command(mock_update_group, mock_context)
-
-    # Check that command executed successfully (no cooldown message)
-    mock_update_group.message.reply_text.assert_called_once()
-    call_args = mock_update_group.message.reply_text.call_args
-    assert "Рулетка выбрала жертву" in call_args[0][0]
 
     # Clean up
     cooldown_service._last_used.clear()
