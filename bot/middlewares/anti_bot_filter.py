@@ -36,14 +36,9 @@ def _entity_text(text: str, entity: MessageEntity) -> Optional[str]:
 def _mentions_target_bot(message: Message) -> bool:
     """Check whether message mentions or addresses the target bot."""
     for text, entity in _iter_entities(message):
-        # Entity types can be str or MessageEntityType; support both styles
-        etype = getattr(entity, "type", None)
-        if etype in {
-            "mention",
-            MessageEntity.MENTION,
-            "bot_command",
-            MessageEntity.BOT_COMMAND,
-        }:
+        # Compare by string type to avoid version-specific enum differences
+        etype = str(getattr(entity, "type", ""))
+        if etype in {"mention", "bot_command"}:
             piece = _entity_text(text, entity)
             if not piece:
                 continue
@@ -88,7 +83,25 @@ async def filter_twoonethreein(
         return
 
     try:
-        if _is_from_target_bot(message) or _mentions_target_bot(message):
+        to_delete = False
+
+        # Direct, forwarded, or via-bot from target
+        if _is_from_target_bot(message):
+            to_delete = True
+
+        # Mentions or commands referencing target
+        if not to_delete and _mentions_target_bot(message):
+            to_delete = True
+
+        # Replies to the target bot's message
+        if (
+            not to_delete
+            and message.reply_to_message is not None
+            and _is_from_target_bot(message.reply_to_message)
+        ):
+            to_delete = True
+
+        if to_delete:
             await message.delete()
             logger.info(
                 "Deleted message %s in chat %s due to target bot interaction",
