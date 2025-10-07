@@ -40,14 +40,10 @@ def test_is_chat_inactive_old_activity(service):
     """Test that chat with old activity is inactive during active hours"""
     chat_id = 123
     moscow_tz = ZoneInfo("Europe/Moscow")
-
-    # Set activity to 16 minutes ago during active hours (e.g., 12:00 MSK)
     now = datetime.now(moscow_tz)
 
-    # Create a datetime at 12:00 MSK to ensure we're in active hours
-    active_time = now.replace(hour=12, minute=0, second=0, microsecond=0)
-    old_active_time = active_time - timedelta(minutes=16)
-
+    # Set activity to 16 minutes ago from now
+    old_active_time = now - timedelta(minutes=16)
     service._last_activity[chat_id] = old_active_time
 
     # If current hour is between 9 and 21, should be inactive
@@ -142,9 +138,8 @@ def test_repeated_dead_chat_messages(service):
     moscow_tz = ZoneInfo("Europe/Moscow")
     now = datetime.now(moscow_tz)
 
-    # Set activity to 16 minutes ago at active hours
-    base_time = now.replace(hour=12, minute=0, second=0, microsecond=0)
-    service._last_activity[chat_id] = base_time - timedelta(minutes=16)
+    # Set activity to 16 minutes ago from now
+    service._last_activity[chat_id] = now - timedelta(minutes=16)
 
     # Should be inactive during active hours
     if 9 <= now.hour < 21:
@@ -157,6 +152,28 @@ def test_repeated_dead_chat_messages(service):
     assert not service.is_chat_inactive(chat_id)
 
     # But if we wait another 16 minutes (simulate), should be inactive again
-    service._last_activity[chat_id] = base_time - timedelta(minutes=16)
+    service._last_activity[chat_id] = now - timedelta(minutes=16)
     if 9 <= now.hour < 21:
         assert service.is_chat_inactive(chat_id)
+
+
+def test_custom_inactive_threshold():
+    """Test that custom inactive threshold can be set"""
+    # Create service with custom 5 minute threshold
+    service = ChatActivityService(inactive_minutes=5)
+    chat_id = 123
+    moscow_tz = ZoneInfo("Europe/Moscow")
+    now = datetime.now(moscow_tz)
+
+    # Set activity to 6 minutes ago from now
+    service._last_activity[chat_id] = now - timedelta(minutes=6)
+
+    # Should be inactive with 5 minute threshold during active hours
+    if 9 <= now.hour < 21:
+        assert service.is_chat_inactive(chat_id)
+
+    # Set activity to 4 minutes ago from now
+    service._last_activity[chat_id] = now - timedelta(minutes=4)
+
+    # Should NOT be inactive with 5 minute threshold
+    assert not service.is_chat_inactive(chat_id)

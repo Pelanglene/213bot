@@ -1,5 +1,5 @@
 # Core dependencies
-python-telegram-bot==20.7
+python-telegram-bot[job-queue]==20.7
 
 # Development dependencies
 pytest==7.4.3

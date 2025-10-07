@@ -12,6 +12,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - DEBUG=${DEBUG:-false}
       - PHRASES_FILE=${PHRASES_FILE:-data/phrases.json}
+      - DEAD_CHAT_MINUTES=${DEAD_CHAT_MINUTES:-15}
     volumes:
       - ./data:/app/data:ro
       - ./logs:/app/logs

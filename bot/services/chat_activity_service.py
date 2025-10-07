@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 class ChatActivityService:
     """Track chat activity and detect inactive chats"""
 
-    def __init__(self):
+    def __init__(self, inactive_minutes: int = 15):
         self._last_activity: Dict[int, datetime] = {}
-        self.inactive_threshold = timedelta(minutes=15)
+        self.inactive_threshold = timedelta(minutes=inactive_minutes)
         self.moscow_tz = ZoneInfo("Europe/Moscow")
         self.active_hours = (9, 21)  # 9:00 to 21:00 MSK
 
