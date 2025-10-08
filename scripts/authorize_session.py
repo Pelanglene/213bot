@@ -15,6 +15,11 @@ from bot.config import settings  # noqa: E402
 async def authorize():
     """Authorize Pyrogram client and create session file"""
     print("=== Telegram Client Authorization ===")
+    if not settings.API_ID or not settings.API_HASH:
+        print("❌ Missing API_ID or API_HASH in environment.")
+        print("This step is optional. To enable advanced features (e.g., /kill_random),")
+        print("set API_ID and API_HASH in your .env and rerun make authorize.")
+        return
     print(f"API ID: {settings.API_ID}")
     print(f"Session name: {settings.SESSION_NAME}")
     print(f"Session will be saved to: ./data/{settings.SESSION_NAME}.session")
@@ -25,8 +30,8 @@ async def authorize():
 
     client = Client(
         name=settings.SESSION_NAME,
-        api_id=settings.API_ID,
-        api_hash=settings.API_HASH,
+        api_id=settings.API_ID,  # type: ignore[arg-type]
+        api_hash=settings.API_HASH,  # type: ignore[arg-type]
         workdir="./data",
     )
 

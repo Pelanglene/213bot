@@ -81,36 +81,71 @@ async def kill_random_command(
         admins = await chat.get_administrators()
         admin_ids = {admin.user.id for admin in admins}
 
-        # Get all chat members using Client API
-        try:
-            all_members = await telegram_client_service.get_chat_members(
-                chat_id=chat.id, exclude_bots=True, exclude_deleted=True
-            )
-            logger.info(f"Retrieved {len(all_members)} members from chat {chat.id}")
+        potential_targets: list[int] = []
 
-            # Filter out admins
+        if telegram_client_service.is_available():
+            # Preferred: use Client API to get full member list
+            try:
+                all_members = await telegram_client_service.get_chat_members(
+                    chat_id=chat.id, exclude_bots=True, exclude_deleted=True
+                )
+                logger.info(
+                    f"Retrieved {len(all_members)} members from chat {chat.id}"
+                )
+
+                potential_targets = [
+                    uid
+                    for uid in all_members
+                    if uid not in admin_ids and uid != context.bot.id
+                ]
+
+                logger.info(
+                    f"Filtered to {len(potential_targets)} potential targets "
+                    f"(excluded {len(admin_ids)} admins)"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to get members using Client API for chat {chat.id}: {e}",
+                    exc_info=True,
+                )
+                await update.message.reply_text(
+                    "❌ Не удалось получить список участников чата. "
+                    "Убедитесь, что аккаунт добавлен в чат.",
+                    reply_to_message_id=update.message.message_id,
+                )
+                return
+        else:
+            # Fallback: use recently active users tracked by middleware
+            # Optional early sanity check on group size
+            try:
+                member_count = await chat.get_member_count()
+                if member_count < 3:
+                    await update.message.reply_text(
+                        "❌ В чате недостаточно участников для рулетки",
+                        reply_to_message_id=update.message.message_id,
+                    )
+                    logger.warning(
+                        f"Too few members ({member_count}) in chat {chat.id}"
+                    )
+                    return
+            except Exception:
+                # Ignore if API method not available in context/mocks
+                pass
+
+            recent_users = context.chat_data.get("recent_users", [])
+            if not recent_users:
+                await update.message.reply_text(
+                    "❌ Не могу найти участников. Поговорите немного и попробуйте снова.",
+                    reply_to_message_id=update.message.message_id,
+                )
+                logger.warning(
+                    f"No recent users tracked for chat {chat.id}; fallback unavailable"
+                )
+                return
+
             potential_targets = [
-                uid
-                for uid in all_members
-                if uid not in admin_ids and uid != context.bot.id
+                uid for uid in recent_users if uid not in admin_ids and uid != context.bot.id
             ]
-
-            logger.info(
-                f"Filtered to {len(potential_targets)} potential targets "
-                f"(excluded {len(admin_ids)} admins)"
-            )
-
-        except Exception as e:
-            logger.error(
-                f"Failed to get members using Client API for chat {chat.id}: {e}",
-                exc_info=True,
-            )
-            await update.message.reply_text(
-                "❌ Не удалось получить список участников чата. "
-                "Убедитесь, что аккаунт добавлен в чат.",
-                reply_to_message_id=update.message.message_id,
-            )
-            return
 
         # Check if we have enough targets
         if len(potential_targets) < 1:

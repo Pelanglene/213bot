@@ -2,6 +2,9 @@
 
 import logging
 
+from typing import Optional
+
+import aiohttp
 from telegram import Update
 from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
@@ -12,6 +15,34 @@ logger = logging.getLogger(__name__)
 
 # Global service instance
 chat_activity_service = ChatActivityService(inactive_minutes=settings.DEAD_CHAT_MINUTES)
+
+
+async def _fetch_neko_image_url() -> Optional[str]:
+    """Fetch random neko image URL from waifu.pics API.
+
+    Returns:
+        Image URL string if successful, otherwise None.
+    """
+    api_url = "https://api.waifu.pics/sfw/neko"
+    timeout = aiohttp.ClientTimeout(total=5)
+
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(api_url) as resp:
+                if resp.status != 200:
+                    logger.warning(
+                        f"Failed to fetch neko image: status={resp.status}"
+                    )
+                    return None
+                data = await resp.json()
+                url = data.get("url")
+                if isinstance(url, str) and url.startswith("http"):
+                    return url
+                logger.warning("Invalid response structure from waifu.pics API")
+                return None
+    except Exception as e:
+        logger.error(f"Error fetching neko image: {e}")
+        return None
 
 
 async def track_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -46,6 +77,23 @@ async def check_inactive_chats(context: ContextTypes.DEFAULT_TYPE) -> None:
 
     for chat_id in inactive_chats:
         try:
+            image_url = await _fetch_neko_image_url()
+            if image_url:
+                try:
+                    await context.bot.send_photo(
+                        chat_id=chat_id, photo=image_url, caption="💀 dead chat"
+                    )
+                    chat_activity_service.mark_dead_chat_sent(chat_id)
+                    logger.info(
+                        f"Sent dead chat photo to chat_id={chat_id} (image from waifu.pics)"
+                    )
+                    continue
+                except Exception as send_photo_err:
+                    logger.warning(
+                        f"Failed to send photo for chat_id={chat_id}: {send_photo_err}."
+                        " Falling back to text message."
+                    )
+
             await context.bot.send_message(chat_id=chat_id, text="💀 dead chat")
             chat_activity_service.mark_dead_chat_sent(chat_id)
             logger.info(f"Sent dead chat message to chat_id={chat_id}")

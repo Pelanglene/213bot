@@ -26,14 +26,16 @@
 2. Создайте `.env`:
 ```bash
 echo "BOT_TOKEN=YOUR_BOT_TOKEN" > .env
-echo "API_ID=YOUR_API_ID" >> .env
-echo "API_HASH=YOUR_API_HASH" >> .env
+# Ниже опционально (для расширенных возможностей):
+# echo "API_ID=YOUR_API_ID" >> .env
+# echo "API_HASH=YOUR_API_HASH" >> .env
 ```
 
-3. Установите зависимости и авторизуйте сессию:
+3. Установите зависимости и (опционально) авторизуйте сессию:
 ```bash
 make install
-make authorize
+# Выполните, если хотите включить расширенные возможности (см. ниже)
+# make authorize
 ```
    Введите номер телефона и код подтверждения из Telegram.
 
@@ -57,13 +59,15 @@ make install
 2. Создайте `.env`:
 ```bash
 echo "BOT_TOKEN=YOUR_BOT_TOKEN" > .env
-echo "API_ID=YOUR_API_ID" >> .env
-echo "API_HASH=YOUR_API_HASH" >> .env
+# Ниже опционально (для расширенных возможностей):
+# echo "API_ID=YOUR_API_ID" >> .env
+# echo "API_HASH=YOUR_API_HASH" >> .env
 ```
 
-3. Авторизуйте Telegram сессию:
+3. (Опционально) Авторизуйте Telegram сессию:
 ```bash
-make authorize
+# Выполните, если хотите включить расширенные возможности (см. ниже)
+# make authorize
 ```
 
 4. Запустите:
@@ -109,14 +113,15 @@ make format       # Форматирование кода
 
 ```bash
 BOT_TOKEN=your_bot_token          # Обязательно: токен бота от @BotFather
-API_ID=12345678                    # Обязательно: получить на https://my.telegram.org
-API_HASH=your_api_hash_here       # Обязательно: получить на https://my.telegram.org
-SESSION_NAME=bot_session          # Опционально: имя сессии Pyrogram
-LOG_LEVEL=INFO                     # DEBUG, INFO, WARNING, ERROR
-DEBUG=false                        # true/false
-PHRASES_FILE=data/phrases.json    # Путь к файлу с фразами
-DEAD_CHAT_MINUTES=15              # Минут неактивности для dead chat
-KILL_RANDOM_MUTE_HOURS=3          # Часов мута для команды /kill_random
+# Ниже опционально. Нужны для некоторых функций, основанных на Client API
+API_ID=12345678                   # Опционально: получить на https://my.telegram.org
+API_HASH=your_api_hash_here      # Опционально: получить на https://my.telegram.org
+SESSION_NAME=bot_session         # Опционально: имя сессии Pyrogram
+LOG_LEVEL=INFO                    # DEBUG, INFO, WARNING, ERROR
+DEBUG=false                       # true/false
+PHRASES_FILE=data/phrases.json   # Путь к файлу с фразами
+DEAD_CHAT_MINUTES=15             # Минут неактивности для dead chat
+KILL_RANDOM_MUTE_HOURS=1         # Часов мута для команды /kill_random
 ```
 
 ## Добавление фраз
@@ -141,17 +146,16 @@ KILL_RANDOM_MUTE_HOURS=3          # Часов мута для команды /k
 - Работает только в групповых чатах (не в личных сообщениях)
 - Бот должен быть администратором чата
 - У бота должно быть право "Ограничивать участников"
-- Аккаунт (API_ID/API_HASH) должен быть участником чата
+- Для полного списка участников нужен авторизованный аккаунт (API_ID/API_HASH)
 
 **Как работает:**
-1. Бот получает список всех участников чата через Telegram Client API
-2. Исключает ботов, удаленные аккаунты и администраторов
-3. Выбирает случайного участника из оставшихся
-4. Мутит выбранного участника на заданное время (по умолчанию 1 час, настраивается через `KILL_RANDOM_MUTE_HOURS`)
+1. Если Client API включен (заданы API_ID/API_HASH и выполнена авторизация) — бот получает список всех участников чата, исключает ботов/удалённые аккаунты/админов и выбирает случайного участника
+2. Если Client API не включен — бот использует список недавно активных участников (отслеживается middleware) и выбирает случайного из них (функциональность ограничена)
+3. Мутит выбранного участника на заданное время (по умолчанию 1 час, настраивается через `KILL_RANDOM_MUTE_HOURS`)
 
 **Кулдаун:** 1 час между использованиями команды **в каждом чате** (команду можно использовать одновременно в разных чатах).
 
-**Примечание:** Для работы команды требуется авторизованный Telegram аккаунт (не бот). Используйте `make authorize` для авторизации перед запуском бота.
+**Примечание:** Авторизованный Telegram аккаунт (не бот) — опционален. Без него команда работает в упрощённом режиме (по недавно активным пользователям). Используйте `make authorize` для включения полного режима.
 
 ## Тестирование
 
