@@ -17,9 +17,11 @@ services:
       - PHRASES_FILE=${PHRASES_FILE:-data/phrases.json}
       - DEAD_CHAT_MINUTES=${DEAD_CHAT_MINUTES:-15}
       - KILL_RANDOM_MUTE_HOURS=${KILL_RANDOM_MUTE_HOURS:-1}
+      - STORAGE_PATH=${STORAGE_PATH:-/app/storage}
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
+      - ./storage:/app/storage
     healthcheck:
       test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
       interval: 30s
