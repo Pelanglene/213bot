@@ -18,6 +18,7 @@ from bot.services.telegram_client_service import telegram_client_service
 from bot.utils import setup_logger
 
 
+# test
 async def post_init(app: Application) -> None:
     """Post-initialization setup"""
     # Initialize Telegram Client API service
