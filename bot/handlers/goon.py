@@ -1,7 +1,7 @@
 """Goon commands handler: /goon and /top_gooners"""
 
 import logging
-import random
+import asyncio
 from datetime import datetime
 from typing import Optional
 
@@ -15,26 +15,27 @@ from bot.services.goon_stats_service import goon_stats_service
 logger = logging.getLogger(__name__)
 
 
-NSFW_TAGS = ["waifu", "neko", "trap", "blowjob"]
-
-
-async def _fetch_waifu_url(tag: str) -> Optional[str]:
-    api_url = f"https://api.waifu.pics/nsfw/{tag}"
+async def _fetch_waifu_ecchi_url() -> Optional[str]:
+    api_url = "https://api.waifu.im/search?included_tags=ecchi"
     timeout = aiohttp.ClientTimeout(total=7)
     try:
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(api_url) as resp:
                 if resp.status != 200:
-                    logger.warning(f"Failed to fetch waifu url for tag={tag}: status={resp.status}")
+                    logger.warning(f"Failed to fetch waifu.im ecchi: status={resp.status}")
                     return None
                 data = await resp.json()
-                url = data.get("url")
-                if isinstance(url, str) and url.startswith("http"):
-                    return url
-                logger.warning("Invalid response structure from waifu.pics nsfw API")
+                # Expecting { "images": [ { "url": "..." } ] }
+                images = data.get("images")
+                if isinstance(images, list) and images:
+                    first = images[0] or {}
+                    url = first.get("url")
+                    if isinstance(url, str) and url.startswith("http"):
+                        return url
+                logger.warning("Invalid response structure from waifu.im API")
                 return None
     except Exception as e:
-        logger.error(f"Error fetching waifu url for tag={tag}: {e}")
+        logger.error(f"Error fetching waifu.im ecchi url: {e}")
         return None
 
 
@@ -45,8 +46,7 @@ async def goon_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     # Optional: prevent in private if desired; currently allow everywhere
-    tag = random.choice(NSFW_TAGS)
-    image_url = await _fetch_waifu_url(tag)
+    image_url = await _fetch_waifu_ecchi_url()
     if not image_url:
         await update.message.reply_text(
             "❌ Не удалось получить картинку, попробуйте позже",
@@ -54,12 +54,25 @@ async def goon_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         return
 
-    try:
-        msg = await context.bot.send_photo(
-            chat_id=chat.id, photo=image_url, caption=f"NSFW", has_spoiler=True
-        )
-    except Exception as e:
-        logger.warning(f"Failed to send goon photo to chat {chat.id}: {e}")
+    photo_sent = False
+    for attempt in range(5):
+        try:
+            await context.bot.send_photo(
+                chat_id=chat.id, photo=image_url, caption=f"NSFW", has_spoiler=True
+            )
+            photo_sent = True
+            break
+        except Exception as e:
+            logger.warning(
+                f"Attempt {attempt + 1}/5: Failed to send goon photo to chat {chat.id}: {e}"
+            )
+            if attempt < 4:
+                try:
+                    await asyncio.sleep(0.5)
+                except Exception:
+                    pass
+
+    if not photo_sent:
         await update.message.reply_text(
             "❌ Не удалось отправить картинку",
             reply_to_message_id=update.message.message_id,
