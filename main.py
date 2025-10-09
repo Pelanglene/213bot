@@ -30,6 +30,8 @@ async def post_init(app: Application) -> None:
         BotCommand("kill_random", "Кикнуть случайного участника (только группы)"),
         BotCommand("can_delete", "Проверить право удалять сообщения"),
         BotCommand("help", "Показать помощь"),
+        BotCommand("goon", "NSFW waifu/neko/trap/blowjob (18+)"),
+        BotCommand("top_gooners", "Топ гоунеров за месяц"),
     ]
 
     # Set commands for private chats
