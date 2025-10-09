@@ -100,8 +100,14 @@ class TelegramClientService:
                 member_ids.append(member.user.id)
 
             logger.info(
-                f"Retrieved {len(member_ids)} members from chat {chat_id} "
-                f"(exclude_bots={exclude_bots}, exclude_deleted={exclude_deleted})"
+                (
+                    "Retrieved %s members from chat %s (exclude_bots=%s, "
+                    "exclude_deleted=%s)"
+                ),
+                len(member_ids),
+                chat_id,
+                exclude_bots,
+                exclude_deleted,
             )
             return member_ids
 
@@ -150,23 +156,43 @@ class TelegramClientService:
 
             # Try alternative aggregate fields if available
             if not isinstance(total, int) or total == 0:
-                total = int(getattr(reactions, "count", getattr(reactions, "total_count", 0)))
+                total = int(
+                    getattr(reactions, "count", getattr(reactions, "total_count", 0))
+                )
 
             return max(total, 0)
         except FloodWait as e:
             logger.warning(
-                f"FloodWait when fetching reactions for chat_id={chat_id}, message_id={message_id}: wait {e.value}s"
+                (
+                    "FloodWait when fetching reactions for chat_id=%s, message_id=%s: "
+                    "wait %ss"
+                ),
+                chat_id,
+                message_id,
+                e.value,
             )
             return 0
         except RPCError as e:
             logger.error(
-                f"Telegram API error when fetching reactions for chat_id={chat_id}, message_id={message_id}: {e}",
+                (
+                    "Telegram API error when fetching reactions for chat_id=%s, "
+                    "message_id=%s: %s"
+                ),
+                chat_id,
+                message_id,
+                e,
                 exc_info=True,
             )
             return 0
         except Exception as e:
             logger.error(
-                f"Unexpected error when fetching reactions for chat_id={chat_id}, message_id={message_id}: {e}",
+                (
+                    "Unexpected error when fetching reactions for chat_id=%s, "
+                    "message_id=%s: %s"
+                ),
+                chat_id,
+                message_id,
+                e,
                 exc_info=True,
             )
             return 0
