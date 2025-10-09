@@ -28,9 +28,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run linters
+      - name: Run flake8
         run: |
-          make lint
+          python -m flake8 bot/ main.py --max-line-length=100
+
+      - name: Run mypy
+        run: |
+          python -m mypy bot/ main.py --ignore-missing-imports
+
+      - name: Run black --check
+        run: |
+          python -m black --check bot/ main.py
+
+      - name: Run isort --check-only
+        run: |
+          python -m isort --check-only bot/ main.py
 
   test:
     name: tests (py${{ matrix.python-version }})
