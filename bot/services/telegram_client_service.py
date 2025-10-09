@@ -124,6 +124,53 @@ class TelegramClientService:
             )
             raise
 
+    async def get_message_reaction_total(self, chat_id: int, message_id: int) -> int:
+        """Return total count of reactions for a given message using Client API.
+
+        Falls back to 0 if reactions are unavailable or an error occurs.
+        """
+        if not self.client or not self._initialized:
+            logger.warning("Telegram Client is not initialized; cannot fetch reactions")
+            return 0
+
+        try:
+            msg = await self.client.get_messages(chat_id, message_id)
+            reactions = getattr(msg, "reactions", None)
+            if reactions is None:
+                return 0
+
+            total = 0
+            # Pyrogram Reactions object may have 'results' with counts
+            results = getattr(reactions, "results", None)
+            if results is not None:
+                try:
+                    total = sum(int(getattr(r, "count", 0)) for r in results)
+                except Exception:
+                    total = 0
+
+            # Try alternative aggregate fields if available
+            if not isinstance(total, int) or total == 0:
+                total = int(getattr(reactions, "count", getattr(reactions, "total_count", 0)))
+
+            return max(total, 0)
+        except FloodWait as e:
+            logger.warning(
+                f"FloodWait when fetching reactions for chat_id={chat_id}, message_id={message_id}: wait {e.value}s"
+            )
+            return 0
+        except RPCError as e:
+            logger.error(
+                f"Telegram API error when fetching reactions for chat_id={chat_id}, message_id={message_id}: {e}",
+                exc_info=True,
+            )
+            return 0
+        except Exception as e:
+            logger.error(
+                f"Unexpected error when fetching reactions for chat_id={chat_id}, message_id={message_id}: {e}",
+                exc_info=True,
+            )
+            return 0
+
     def is_available(self) -> bool:
         """Return True if the client API is initialized and available."""
         return bool(self.client and self._initialized)

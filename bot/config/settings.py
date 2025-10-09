@@ -2,11 +2,14 @@
 
 import os
 from pathlib import Path
+import logging
 
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 class Settings:
@@ -21,9 +24,14 @@ class Settings:
         self.SESSION_NAME: str = os.getenv("SESSION_NAME", "bot_session")
         self.LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
         self.PHRASES_FILE: Path = Path(os.getenv("PHRASES_FILE", "data/phrases.json"))
+        self.STORAGE_PATH: Path = Path(os.getenv("STORAGE_PATH", "storage/"))
         self.DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
+        self.TEST_MODE: bool = os.getenv("TEST_MODE", "false").lower() == "true"
         self.DEAD_CHAT_MINUTES: int = int(os.getenv("DEAD_CHAT_MINUTES", "15"))
         self.KILL_RANDOM_MUTE_HOURS: int = int(os.getenv("KILL_RANDOM_MUTE_HOURS", "1"))
+
+        if self.TEST_MODE:
+            logger.info("TEST_MODE is enabled")
 
     @staticmethod
     def _get_required_env(key: str) -> str:
