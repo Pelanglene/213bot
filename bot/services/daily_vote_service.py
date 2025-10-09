@@ -31,14 +31,18 @@ class DailyVoteService:
             try:
                 self.storage_dir.mkdir(parents=True, exist_ok=True)
             except Exception as e:
-                logger.error(f"Failed to create storage directory {self.storage_dir}: {e}")
+                logger.error(
+                    f"Failed to create storage directory {self.storage_dir}: {e}"
+                )
                 self.storage_dir = None
 
     def _date_key(self, dt: datetime) -> str:
         dt_msk = dt.astimezone(self.moscow_tz)
         return dt_msk.date().isoformat()
 
-    def record_entry(self, chat_id: int, message_id: int, file_id: str, sent_at: datetime) -> None:
+    def record_entry(
+        self, chat_id: int, message_id: int, file_id: str, sent_at: datetime
+    ) -> None:
         """Record a photo message sent by the bot for daily voting."""
         date_key = self._date_key(sent_at)
         # Ensure date is loaded from disk first
@@ -67,7 +71,9 @@ class DailyVoteService:
             return []
         return list(self._entries_by_date[date_key].keys())
 
-    def get_entries_for_date(self, date_key: str, chat_id: int) -> List[DailyPhotoEntry]:
+    def get_entries_for_date(
+        self, date_key: str, chat_id: int
+    ) -> List[DailyPhotoEntry]:
         """Return entries for a chat on a given date key."""
         self._maybe_load_date(date_key)
         if date_key not in self._entries_by_date:
@@ -155,8 +161,8 @@ class DailyVoteService:
 
 
 # Global service instance (storage_dir is provided by settings in import site)
-from bot.config import settings  # late import to avoid cycles at module import time
+from bot.config import (  # noqa: E402
+    settings,
+)  # late import to avoid cycles at module import time
 
 daily_vote_service = DailyVoteService(storage_dir=settings.STORAGE_PATH)
-
-

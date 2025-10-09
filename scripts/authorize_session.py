@@ -17,7 +17,9 @@ async def authorize():
     print("=== Telegram Client Authorization ===")
     if not settings.API_ID or not settings.API_HASH:
         print("❌ Missing API_ID or API_HASH in environment.")
-        print("This step is optional. To enable advanced features (e.g., /kill_random),")
+        print(
+            "This step is optional. To enable advanced features (e.g., /kill_random),"
+        )
         print("set API_ID and API_HASH in your .env and rerun make authorize.")
         return
     print(f"API ID: {settings.API_ID}")

@@ -7,7 +7,7 @@ from typing import Optional
 
 import aiohttp
 from zoneinfo import ZoneInfo
-from telegram import Chat, Update
+from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 from bot.services.goon_stats_service import goon_stats_service
@@ -22,7 +22,9 @@ async def _fetch_waifu_ecchi_url() -> Optional[str]:
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(api_url) as resp:
                 if resp.status != 200:
-                    logger.warning(f"Failed to fetch waifu.im ecchi: status={resp.status}")
+                    logger.warning(
+                        f"Failed to fetch waifu.im ecchi: status={resp.status}"
+                    )
                     return None
                 data = await resp.json()
                 # Expecting { "images": [ { "url": "..." } ] }
@@ -58,7 +60,7 @@ async def goon_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     for attempt in range(5):
         try:
             await context.bot.send_photo(
-                chat_id=chat.id, photo=image_url, caption=f"NSFW", has_spoiler=True
+                chat_id=chat.id, photo=image_url, caption="NSFW", has_spoiler=True
             )
             photo_sent = True
             break
@@ -81,7 +83,11 @@ async def goon_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     # Record stat for current MSK month
     try:
-        goon_stats_service.record_usage(chat_id=chat.id, user_id=user.id, when=datetime.now(ZoneInfo("Europe/Moscow")))
+        goon_stats_service.record_usage(
+            chat_id=chat.id,
+            user_id=user.id,
+            when=datetime.now(ZoneInfo("Europe/Moscow")),
+        )
     except Exception as e:
         logger.warning(f"Failed to record goon stat: {e}")
 
@@ -91,7 +97,9 @@ def _month_key_now_msk() -> str:
     return now_msk.strftime("%Y-%m")
 
 
-async def top_gooners_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def top_gooners_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     chat = update.effective_chat
     if not chat or not update.message:
         return
@@ -107,7 +115,7 @@ async def top_gooners_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     # Try to resolve display names (may require extra API calls)
-    lines: list[str] = [f"🏆 Топ дрочил за месяц:"]
+    lines: list[str] = ["🏆 Топ дрочил за месяц:"]
     rank = 1
     for entry in top:
         display = f"id={entry.user_id}"
@@ -133,5 +141,3 @@ def register_goon_handlers(app: Application) -> None:
     app.add_handler(CommandHandler("goon", goon_command))
     app.add_handler(CommandHandler("top_gooners", top_gooners_command))
     logger.info("Goon handlers registered")
-
-

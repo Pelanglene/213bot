@@ -16,7 +16,9 @@ class ChatActivityService:
         self.inactive_threshold = timedelta(minutes=inactive_minutes)
         self.moscow_tz = ZoneInfo("Europe/Moscow")
         self.active_hours = (9, 21)  # 9:00 to 21:00 MSK
-        logger.info(f"ChatActivityService initialized with inactive_minutes={inactive_minutes}")
+        logger.info(
+            f"ChatActivityService initialized with inactive_minutes={inactive_minutes}"
+        )
 
     def update_activity(self, chat_id: int) -> None:
         """
@@ -42,7 +44,9 @@ class ChatActivityService:
             True if chat is inactive and should get dead chat message
         """
         logger.debug(f"Checking if chat_id={chat_id} is inactive")
-        logger.debug(f"ChatActivityService initialized with inactive_threshold={self.inactive_threshold}")
+        logger.debug(
+            f"ChatActivityService initialized with inactive_threshold={self.inactive_threshold}"
+        )
         # Never sent a message in this chat
         if chat_id not in self._last_activity:
             logger.debug(f"Chat_id={chat_id} not found in last_activity")

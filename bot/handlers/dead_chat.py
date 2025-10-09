@@ -7,7 +7,13 @@ from typing import Optional
 
 import aiohttp
 from telegram import Update
-from telegram.ext import Application, ContextTypes, MessageHandler, CommandHandler, filters
+from telegram.ext import (
+    Application,
+    ContextTypes,
+    MessageHandler,
+    CommandHandler,
+    filters,
+)
 
 from bot.config import settings
 from bot.services.chat_activity_service import ChatActivityService
@@ -34,9 +40,7 @@ async def _fetch_neko_image_url() -> Optional[str]:
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(api_url) as resp:
                 if resp.status != 200:
-                    logger.warning(
-                        f"Failed to fetch neko image: status={resp.status}"
-                    )
+                    logger.warning(f"Failed to fetch neko image: status={resp.status}")
                     return None
                 data = await resp.json()
                 url = data.get("url")
@@ -97,9 +101,15 @@ async def check_inactive_chats(context: ContextTypes.DEFAULT_TYPE) -> None:
                     chat_activity_service.mark_dead_chat_sent(chat_id)
                     # Record for daily voting if file_id is available
                     try:
-                        file_id = msg.photo[-1].file_id if getattr(msg, "photo", None) else None
+                        file_id = (
+                            msg.photo[-1].file_id
+                            if getattr(msg, "photo", None)
+                            else None
+                        )
                         if file_id:
-                            sent_at = getattr(msg, "date", datetime.now(ZoneInfo("UTC")))
+                            sent_at = getattr(
+                                msg, "date", datetime.now(ZoneInfo("UTC"))
+                            )
                             daily_vote_service.record_entry(
                                 chat_id=chat_id,
                                 message_id=msg.message_id,
@@ -130,7 +140,9 @@ async def check_inactive_chats(context: ContextTypes.DEFAULT_TYPE) -> None:
             logger.error(f"Failed to send dead chat message to chat_id={chat_id}: {e}")
 
 
-async def _announce_tyan_for_date(context: ContextTypes.DEFAULT_TYPE, date_key: str) -> None:
+async def _announce_tyan_for_date(
+    context: ContextTypes.DEFAULT_TYPE, date_key: str
+) -> None:
     """Core logic to announce winners for a given MSK date key across chats."""
     chat_ids = daily_vote_service.get_chats_for_date(date_key)
     if not chat_ids:
@@ -151,15 +163,14 @@ async def _announce_tyan_for_date(context: ContextTypes.DEFAULT_TYPE, date_key: 
                     chat_id=entry.chat_id, message_id=entry.message_id
                 )
                 logger.info(f"Entry: {entry}")
-                logger.info(f"Reactions for message_id={entry.message_id} in chat_id={entry.chat_id}: {count}")
+                logger.info(
+                    f"Reactions for message_id={entry.message_id} in chat_id={entry.chat_id}: {count}"
+                )
 
-                if (
-                    count > best_count
-                    or (
-                        count == best_count
-                        and best_entry is not None
-                        and entry.sent_at < best_entry.sent_at
-                    )
+                if count > best_count or (
+                    count == best_count
+                    and best_entry is not None
+                    and entry.sent_at < best_entry.sent_at
                 ):
                     best_entry = entry
                     best_count = count
@@ -168,7 +179,9 @@ async def _announce_tyan_for_date(context: ContextTypes.DEFAULT_TYPE, date_key: 
                 continue
 
             caption = f"👑 Тян дня! ({best_count} реакций)"
-            await context.bot.send_photo(chat_id=chat_id, photo=best_entry.file_id, caption=caption)
+            await context.bot.send_photo(
+                chat_id=chat_id, photo=best_entry.file_id, caption=caption
+            )
             logger.info(
                 f"Announced 'тян дня' in chat_id={chat_id}: message_id={best_entry.message_id}, reactions={best_count}"
             )
@@ -189,7 +202,9 @@ async def announce_tyan_of_the_day(context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.warning(f"Failed to clear daily entries for {date_key}: {clear_err}")
 
 
-async def announce_tyan_of_the_day_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def announce_tyan_of_the_day_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Test-only command to announce today's winners immediately."""
     if not settings.TEST_MODE:
         return
@@ -201,7 +216,9 @@ async def announce_tyan_of_the_day_command(update: Update, context: ContextTypes
     except Exception:
         pass
     if update.effective_message:
-        await update.effective_message.reply_text("Готово: объявил 'тян дня' за сегодня.")
+        await update.effective_message.reply_text(
+            "Готово: объявил 'тян дня' за сегодня."
+        )
 
 
 def register_dead_chat_handlers(app: Application) -> None:
@@ -230,7 +247,11 @@ def register_dead_chat_handlers(app: Application) -> None:
         )
         # Register test-only command when TEST_MODE is enabled
         if settings.TEST_MODE:
-            app.add_handler(CommandHandler("announce_tyan_of_the_day", announce_tyan_of_the_day_command))
+            app.add_handler(
+                CommandHandler(
+                    "announce_tyan_of_the_day", announce_tyan_of_the_day_command
+                )
+            )
         logger.info(
             f"Dead chat detection handler registered with 60s check interval, "
             f"{settings.DEAD_CHAT_MINUTES}min inactivity threshold"

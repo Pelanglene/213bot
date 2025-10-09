@@ -89,9 +89,7 @@ async def kill_random_command(
                 all_members = await telegram_client_service.get_chat_members(
                     chat_id=chat.id, exclude_bots=True, exclude_deleted=True
                 )
-                logger.info(
-                    f"Retrieved {len(all_members)} members from chat {chat.id}"
-                )
+                logger.info(f"Retrieved {len(all_members)} members from chat {chat.id}")
 
                 potential_targets = [
                     uid
@@ -144,7 +142,9 @@ async def kill_random_command(
                 return
 
             potential_targets = [
-                uid for uid in recent_users if uid not in admin_ids and uid != context.bot.id
+                uid
+                for uid in recent_users
+                if uid not in admin_ids and uid != context.bot.id
             ]
 
         # Check if we have enough targets

@@ -40,14 +40,12 @@ test:
 	$(PYTHON) -m pytest tests/ -v --cov=bot --cov-report=term-missing
 
 lint:
-	$(PYTHON) -m flake8 bot/ main.py --max-line-length=100
+	$(PYTHON) -m flake8 bot/ main.py --max-line-length=120
 	$(PYTHON) -m mypy bot/ main.py --ignore-missing-imports
 	$(PYTHON) -m black --check bot/ main.py
-	$(PYTHON) -m isort --check-only bot/ main.py
 
 format:
 	$(PYTHON) -m black bot/ main.py tests/
-	$(PYTHON) -m isort bot/ main.py tests/
 
 docker-build:
 	docker-compose build

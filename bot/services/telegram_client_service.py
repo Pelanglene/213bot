@@ -150,7 +150,9 @@ class TelegramClientService:
 
             # Try alternative aggregate fields if available
             if not isinstance(total, int) or total == 0:
-                total = int(getattr(reactions, "count", getattr(reactions, "total_count", 0)))
+                total = int(
+                    getattr(reactions, "count", getattr(reactions, "total_count", 0))
+                )
 
             return max(total, 0)
         except FloodWait as e:

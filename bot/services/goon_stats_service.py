@@ -29,7 +29,9 @@ class GoonStatsService:
             try:
                 self.storage_dir.mkdir(parents=True, exist_ok=True)
             except Exception as e:
-                logger.error(f"Failed to create storage directory {self.storage_dir}: {e}")
+                logger.error(
+                    f"Failed to create storage directory {self.storage_dir}: {e}"
+                )
                 self.storage_dir = None
 
     def _month_key(self, dt: datetime) -> str:
@@ -67,14 +69,20 @@ class GoonStatsService:
         try:
             to_dump: Dict[str, Dict[str, int]] = {}
             for chat_id, per_user in self._counts_by_month.get(month_key, {}).items():
-                to_dump[str(chat_id)] = {str(uid): int(cnt) for uid, cnt in per_user.items()}
+                to_dump[str(chat_id)] = {
+                    str(uid): int(cnt) for uid, cnt in per_user.items()
+                }
             with file_path.open("w", encoding="utf-8") as f:
                 json.dump(to_dump, f, ensure_ascii=False, indent=2)
             logger.debug(f"Saved goon stats for {month_key} to {file_path}")
         except Exception as e:
-            logger.error(f"Failed to save goon stats for {month_key} to {file_path}: {e}")
+            logger.error(
+                f"Failed to save goon stats for {month_key} to {file_path}: {e}"
+            )
 
-    def record_usage(self, chat_id: int, user_id: int, when: Optional[datetime] = None) -> None:
+    def record_usage(
+        self, chat_id: int, user_id: int, when: Optional[datetime] = None
+    ) -> None:
         dt = when or datetime.now(self.moscow_tz)
         month_key = self._month_key(dt)
         self._maybe_load_month(month_key)
@@ -114,8 +122,6 @@ class GoonStatsService:
 
 
 # Global service instance (storage_dir is provided by settings in import site)
-from bot.config import settings  # late import
+from bot.config import settings  # late import  # noqa: E402
 
 goon_stats_service = GoonStatsService(storage_dir=settings.STORAGE_PATH)
-
-
