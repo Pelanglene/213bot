@@ -4,7 +4,6 @@ from telegram.ext import Application
 
 from .basic import register_basic_handlers
 from .dead_chat import register_dead_chat_handlers
-from .kill_random import register_kill_random_handlers
 from .permissions import register_permissions_handlers
 from .ping import register_ping_handlers
 
@@ -20,7 +19,6 @@ def register_all_handlers(app: Application) -> None:
     register_ping_handlers(app)
     register_permissions_handlers(app)
     register_dead_chat_handlers(app)
-    register_kill_random_handlers(app)
 
 
 __all__ = ["register_all_handlers"]
