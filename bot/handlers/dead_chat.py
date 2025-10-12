@@ -15,10 +15,15 @@ from telegram.ext import (
     filters,
 )
 
+# Optional import for PTB versions that support reaction handlers
+try:
+    from telegram.ext import MessageReactionHandler  # type: ignore
+except Exception:  # pragma: no cover - fallback when older PTB is installed
+    MessageReactionHandler = None  # type: ignore
+
 from bot.config import settings
 from bot.services.chat_activity_service import ChatActivityService
 from bot.services.daily_vote_service import daily_vote_service
-from bot.services.telegram_client_service import telegram_client_service
 from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
@@ -159,9 +164,8 @@ async def _announce_tyan_for_date(
             best_count = -1
 
             for entry in entries:
-                count = await telegram_client_service.get_message_reaction_total(
-                    chat_id=entry.chat_id, message_id=entry.message_id
-                )
+                # Use stored reaction totals tracked via Bot API updates
+                count = int(getattr(entry, "reaction_total", 0))
                 logger.info(f"Entry: {entry}")
                 logger.info(
                     f"Reactions for message_id={entry.message_id} in chat_id={entry.chat_id}: {count}"
@@ -258,3 +262,53 @@ def register_dead_chat_handlers(app: Application) -> None:
         )
     else:
         logger.warning("Job queue not available, dead chat detection disabled")
+
+    # Register reaction update handler to track reaction counts via Bot API
+    async def reaction_update_handler(
+        update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        try:
+            if update.message_reaction_count:
+                mrc = update.message_reaction_count
+                total = 0
+                try:
+                    reactions = getattr(mrc, "reactions", ()) or ()
+                    total = sum(int(getattr(rc, "total_count", 0)) for rc in reactions)
+                except Exception:
+                    total = 0
+                updated = daily_vote_service.update_reaction_count_set(
+                    chat_id=mrc.chat.id, message_id=mrc.message_id, total_count=total
+                )
+                if updated:
+                    logger.debug(
+                        f"Set reaction_total={total} for message_id={mrc.message_id} chat_id={mrc.chat.id}"
+                    )
+                return
+
+            if update.message_reaction:
+                mru = update.message_reaction
+                old_len = len(getattr(mru, "old_reaction", ()) or ())
+                new_len = len(getattr(mru, "new_reaction", ()) or ())
+                delta = new_len - old_len
+                if delta != 0:
+                    updated = daily_vote_service.update_reaction_count_delta(
+                        chat_id=mru.chat.id, message_id=mru.message_id, delta=delta
+                    )
+                    if updated:
+                        logger.debug(
+                            f"Delta reaction_total by {delta} for message_id={mru.message_id} chat_id={mru.chat.id}"
+                        )
+        except Exception as e:
+            logger.warning(f"Failed to process reaction update: {e}")
+
+    if MessageReactionHandler is not None:
+        app.add_handler(
+            MessageReactionHandler(
+                reaction_update_handler,
+                message_reaction_types=MessageReactionHandler.MESSAGE_REACTION,
+            )
+        )
+    else:
+        logger.warning(
+            "MessageReactionHandler not available; install python-telegram-bot>=20.8 to enable reaction tracking"
+        )

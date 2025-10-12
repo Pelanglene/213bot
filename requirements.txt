@@ -1,5 +1,6 @@
 # Core dependencies
-python-telegram-bot[job-queue]==20.7
+# Requires >=20.8 for reaction updates; pin to a stable 21.x
+python-telegram-bot[job-queue]==21.6
 pyrogram==2.0.106
 tgcrypto==1.2.5
 aiohttp==3.9.5
