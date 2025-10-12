@@ -17,6 +17,8 @@ class DailyPhotoEntry:
     message_id: int
     file_id: str
     sent_at: datetime  # Should be in MSK tz
+    # Total number of reactions tracked for this message via Bot API updates
+    reaction_total: int = 0
 
 
 class DailyVoteService:
@@ -123,12 +125,15 @@ class DailyVoteService:
                         sent_at = datetime.fromisoformat(e.get("sent_at"))
                     except Exception:
                         sent_at = datetime.now(self.moscow_tz)
+                    # Backward compatible: default to 0 if missing
+                    reaction_total = int(e.get("reaction_total", 0))
                     result[chat_id].append(
                         DailyPhotoEntry(
                             chat_id=chat_id,
                             message_id=int(e.get("message_id")),
                             file_id=str(e.get("file_id")),
                             sent_at=sent_at.astimezone(self.moscow_tz),
+                            reaction_total=reaction_total,
                         )
                     )
             self._entries_by_date[date_key] = result
@@ -150,6 +155,7 @@ class DailyVoteService:
                         "message_id": entry.message_id,
                         "file_id": entry.file_id,
                         "sent_at": entry.sent_at.isoformat(),
+                        "reaction_total": entry.reaction_total,
                     }
                     for entry in entries
                 ]
@@ -158,6 +164,62 @@ class DailyVoteService:
             logger.debug(f"Saved daily vote entries to {file_path}")
         except Exception as e:
             logger.error(f"Failed to save daily vote entries to {file_path}: {e}")
+
+    # --- Reaction tracking helpers ---
+
+    def _candidate_date_keys_for_update(self) -> list[str]:
+        """Return date keys likely relevant for reaction updates (today & yesterday in MSK)."""
+        now_msk = datetime.now(self.moscow_tz)
+        today_key = now_msk.date().isoformat()
+        yesterday_key = (now_msk.date()).fromordinal(now_msk.date().toordinal() - 1).isoformat()
+        return [today_key, yesterday_key]
+
+    def update_reaction_count_set(self, chat_id: int, message_id: int, total_count: int) -> bool:
+        """Set the total reaction count for a specific message if it exists in storage.
+
+        Searches today's and yesterday's entries (MSK). Returns True if an entry was updated.
+        """
+        updated = False
+        for date_key in self._candidate_date_keys_for_update():
+            self._maybe_load_date(date_key)
+            entries_by_chat = self._entries_by_date.get(date_key)
+            if not entries_by_chat:
+                continue
+            entries = entries_by_chat.get(chat_id, [])
+            for entry in entries:
+                if entry.message_id == message_id:
+                    if entry.reaction_total != total_count:
+                        entry.reaction_total = max(0, int(total_count))
+                        self._save_date(date_key)
+                    updated = True
+                    break
+            if updated:
+                break
+        return updated
+
+    def update_reaction_count_delta(self, chat_id: int, message_id: int, delta: int) -> bool:
+        """Apply a delta to the reaction count for a specific message if it exists in storage.
+
+        Searches today's and yesterday's entries (MSK). Returns True if an entry was updated.
+        """
+        if not isinstance(delta, int) or delta == 0:
+            return False
+        updated = False
+        for date_key in self._candidate_date_keys_for_update():
+            self._maybe_load_date(date_key)
+            entries_by_chat = self._entries_by_date.get(date_key)
+            if not entries_by_chat:
+                continue
+            entries = entries_by_chat.get(chat_id, [])
+            for entry in entries:
+                if entry.message_id == message_id:
+                    entry.reaction_total = max(0, int(entry.reaction_total) + int(delta))
+                    self._save_date(date_key)
+                    updated = True
+                    break
+            if updated:
+                break
+        return updated
 
 
 # Global service instance (storage_dir is provided by settings in import site)

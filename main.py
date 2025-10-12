@@ -74,8 +74,16 @@ def main() -> None:
 
         # Start polling
         logger.info("Bot is running. Press Ctrl+C to stop.")
+        # Allow reaction updates so we can track counts via Bot API
+        allowed_updates = list(Update.ALL_TYPES)
+        # Ensure reaction-related updates are included (redundant if already in ALL_TYPES)
+        if Update.MESSAGE_REACTION not in allowed_updates:
+            allowed_updates.append(Update.MESSAGE_REACTION)
+        if Update.MESSAGE_REACTION_COUNT not in allowed_updates:
+            allowed_updates.append(Update.MESSAGE_REACTION_COUNT)
+
         app.run_polling(
-            allowed_updates=Update.ALL_TYPES,
+            allowed_updates=allowed_updates,
             drop_pending_updates=True,  # Ignore pending updates on restart
         )
 
