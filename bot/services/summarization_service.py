@@ -1,7 +1,7 @@
-"""Summarization service using local Hugging Face causal model (Vikhr-Llama-3.2-1B-Instruct).
+"""Summarization service using local GGUF model via llama-cpp.
 
-Loads the model lazily on first use and performs summarization on provided
-text content. Designed for on-device inference.
+Default model: Vikhrmodels/Vikhr-Llama-3.2-1B-instruct-GGUF (4-bit). The model
+is loaded lazily and cached on disk. Inference is performed locally.
 """
 
 from __future__ import annotations
@@ -9,49 +9,103 @@ from __future__ import annotations
 import logging
 import os
 import re
+import shutil
 from typing import Optional
+from urllib.parse import urlparse
+import urllib.request as urlrequest
 
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    pipeline,
-)
+from llama_cpp import Llama
+from huggingface_hub import hf_hub_download
 
 
 logger = logging.getLogger(__name__)
 
 
 class SummarizationService:
-    """Wrap Hugging Face text-generation pipeline for Vikhr-Llama-3.2-1B-Instruct."""
+    """Wrap llama-cpp generation for Vikhr GGUF model."""
 
-    def __init__(self, model_name: str = "Vikhrmodels/Vikhr-Llama-3.2-1B-Instruct"):
-        self.model_name = model_name
-        self._pipe = None  # type: ignore[var-annotated]
-        self._tokenizer = None  # type: ignore[var-annotated]
+    def __init__(self, model_repo_or_path: str = "Vikhrmodels/Vikhr-Llama-3.2-1B-instruct-GGUF"):
+        self.model_repo_or_path = model_repo_or_path
+        self._llm: Optional[Llama] = None
 
-    def _ensure_pipeline(self) -> None:
-        if self._pipe is not None:
+    def _ensure_llm(self) -> None:
+        if self._llm is not None:
             return
         try:
-            # Allow user to control device placement via env.
-            # Auto device selection: use GPU if available; else CPU.
-            tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-            if getattr(tokenizer, "pad_token", None) is None and getattr(tokenizer, "eos_token", None) is not None:
-                tokenizer.pad_token = tokenizer.eos_token  # type: ignore[attr-defined]
-            model = AutoModelForCausalLM.from_pretrained(self.model_name)
-            device = 0 if os.getenv("CUDA_AVAILABLE", "").lower() == "true" else -1
-            self._pipe = pipeline(
-                task="text-generation",
-                model=model,
-                tokenizer=tokenizer,
-                device=device,
+            # Resolve model path: allow local absolute path via env, else HF cache location
+            model_path = os.getenv("LLAMA_MODEL_PATH")
+            if not model_path or not os.path.exists(model_path):
+                # Prefer direct URL download when provided
+                cache_dir = os.getenv("HUGGINGFACE_HUB_CACHE") or "/app/storage/huggingface/hub"
+                url = os.getenv(
+                    "LLAMA_MODEL_URL",
+                    "https://huggingface.co/Vikhrmodels/Vikhr-Llama-3.2-1B-instruct-GGUF/resolve/main/Vikhr-Llama-3.2-1B-Q4_K_M.gguf?download=true",
+                )
+                try:
+                    os.makedirs(cache_dir, exist_ok=True)
+                except Exception:
+                    pass
+
+                filename_env = os.getenv("LLAMA_MODEL_FILE")
+                parsed_name = os.path.basename(urlparse(url).path) or "model.gguf"
+                filename = filename_env or parsed_name
+                dest_path = os.path.join(cache_dir, filename)
+
+                # Download only if not present
+                if not os.path.exists(dest_path):
+                    try:
+                        with urlrequest.urlopen(url) as resp, open(dest_path, "wb") as out:
+                            shutil.copyfileobj(resp, out)
+                        logger.info(f"Downloaded GGUF model to {dest_path}")
+                    except Exception as direct_err:
+                        # Fallback: try huggingface_hub by repo/file if configured
+                        repo_id = os.getenv(
+                            "LLAMA_REPO_ID", "Vikhrmodels/Vikhr-Llama-3.2-1B-instruct-GGUF"
+                        )
+                        hf_filename = filename_env or "Vikhr-Llama-3.2-1B-instruct-Q4_K_M.gguf"
+                        try:
+                            dest_path = hf_hub_download(
+                                repo_id=repo_id,
+                                filename=hf_filename,
+                                cache_dir=cache_dir,
+                            )
+                            logger.info(f"Fetched GGUF via hf_hub_download to {dest_path}")
+                        except Exception as dl_err:
+                            raise RuntimeError(
+                                f"Model file download failed: direct URL error={direct_err}; hf_hub_download error={dl_err}"
+                            )
+
+                model_path = dest_path
+
+            n_ctx = int(os.getenv("LLAMA_CTX", "4096"))
+            n_threads = int(os.getenv("LLAMA_THREADS", str(os.cpu_count() or 4)))
+            n_gpu_layers = int(os.getenv("LLAMA_N_GPU_LAYERS", "0"))
+
+            # Build kwargs without passing None for rope params
+            llm_kwargs = dict(
+                model_path=model_path,
+                n_ctx=n_ctx,
+                n_threads=n_threads,
+                n_gpu_layers=n_gpu_layers,
+                verbose=False,
             )
-            self._tokenizer = tokenizer
-            logger.info(
-                f"Initialized summarization pipeline for {self.model_name} (device={device})"
-            )
+            rope_base_env = (os.getenv("LLAMA_ROPE_FREQ_BASE") or "").strip()
+            rope_scale_env = (os.getenv("LLAMA_ROPE_FREQ_SCALE") or "").strip()
+            try:
+                if rope_base_env and rope_base_env not in ("0", "0.0"):
+                    llm_kwargs["rope_freq_base"] = float(rope_base_env)
+            except Exception:
+                pass
+            try:
+                if rope_scale_env and rope_scale_env not in ("0", "0.0"):
+                    llm_kwargs["rope_freq_scale"] = float(rope_scale_env)
+            except Exception:
+                pass
+
+            self._llm = Llama(**llm_kwargs)
+            logger.info(f"Initialized llama-cpp with model at {model_path}")
         except Exception as e:
-            logger.error(f"Failed to initialize summarization pipeline: {e}")
+            logger.error(f"Failed to initialize llama-cpp model: {e}")
             raise
 
     def summarize_text(
@@ -76,8 +130,8 @@ class SummarizationService:
             min_length: Minimum tokens for summary.
             max_length: Maximum tokens for summary.
         """
-        self._ensure_pipeline()
-        assert self._pipe is not None
+        self._ensure_llm()
+        assert self._llm is not None
 
         # Русская few-shot инструкция с примерами и явной меткой "Сводка:"
         prompt = (
@@ -113,36 +167,25 @@ class SummarizationService:
         try:
             # Truncate overly long inputs by characters to avoid OOM.
             truncated = prompt[:32000]
-            max_new_tokens = max(64, min(max_length, 256))
-            min_new_tokens = max(16, min(min_length, 128))
-            eos_id = None
-            try:
-                eos_id = self._tokenizer.eos_token_id if self._tokenizer is not None else None
-            except Exception:
-                eos_id = None
-            outputs = self._pipe(
-                truncated,
-                # Generation controls for causal LM
-                max_new_tokens=max_new_tokens,
-                min_new_tokens=min_new_tokens,
-                do_sample=do_sample,
+            max_tokens = max(64, min(max_length, 256))
+            # llama-cpp expects plain generation parameters
+            result = self._llm(
+                prompt=truncated,
+                max_tokens=max_tokens,
                 temperature=temperature,
                 top_p=top_p,
                 top_k=top_k,
-                num_beams=num_beams,
-                no_repeat_ngram_size=no_repeat_ngram_size,
-                repetition_penalty=repetition_penalty,
-                early_stopping=early_stopping,
-                truncation=True,
-                eos_token_id=eos_id,
-                pad_token_id=(self._tokenizer.pad_token_id if self._tokenizer else None),
-                return_full_text=False,
+                repeat_penalty=repetition_penalty,
+                stop=["\n\nДиалог:", "\n\nПример", "\n\nСводка:"],
+                echo=False,
             )
-            if isinstance(outputs, list) and outputs:
-                summary = outputs[0].get("generated_text") or outputs[0].get("summary_text")
-                if isinstance(summary, str) and summary.strip():
-                    cleaned = self._postprocess_summary(summary.strip())
-                    return cleaned
+            try:
+                summary = (result.get("choices", [{}])[0].get("text", "") or "").strip()
+            except Exception:
+                summary = ""
+            if summary:
+                cleaned = self._postprocess_summary(summary)
+                return cleaned
             logger.warning("Summarization pipeline returned no text; returning fallback")
             return "(no summary)"
         except Exception as e:
