@@ -18,6 +18,12 @@ services:
       - DEAD_CHAT_MINUTES=${DEAD_CHAT_MINUTES:-15}
       - KILL_RANDOM_MUTE_HOURS=${KILL_RANDOM_MUTE_HOURS:-1}
       - STORAGE_PATH=${STORAGE_PATH:-/app/storage}
+      # Persist Hugging Face caches to storage volume
+      - HF_HOME=/app/storage/huggingface
+      - TRANSFORMERS_CACHE=/app/storage/huggingface/transformers
+      - HF_DATASETS_CACHE=/app/storage/huggingface/datasets
+      - HUGGINGFACE_HUB_CACHE=/app/storage/huggingface/hub
+      - XDG_CACHE_HOME=/app/storage/.cache
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
