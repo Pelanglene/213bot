@@ -34,6 +34,10 @@ async def post_init(app: Application) -> None:
         BotCommand("top_gooners", "Топ гоунеров за месяц"),
     ]
 
+    # Test-only commands
+    if settings.TEST_MODE:
+        commands.append(BotCommand("summary", "Тест: сгенерировать сводку за сегодня"))
+
     # Set commands for private chats
     await app.bot.set_my_commands(commands, scope=BotCommandScopeAllPrivateChats())
 
