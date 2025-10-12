@@ -64,7 +64,7 @@ def main() -> None:
         app = Application.builder().token(settings.BOT_TOKEN).build()
 
         # Register anti-bot filter BEFORE everything else
-        register_anti_bot_filter(app)
+        # register_anti_bot_filter(app)
 
         # Register user tracker middleware
         register_user_tracker(app)

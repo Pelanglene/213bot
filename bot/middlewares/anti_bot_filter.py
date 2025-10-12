@@ -118,9 +118,9 @@ async def filter_twoonethreein(
             match_reason = "reply_to_bot"
 
         if to_delete:
-            await message.delete()
+            # Deletion disabled intentionally
             logger.info(
-                "Deleted message %s in chat %s (reason=%s)",
+                "Skip deletion (disabled) for msg %s in chat %s (reason=%s)",
                 message.message_id,
                 message.chat_id if message.chat else "unknown",
                 match_reason or "unknown",
