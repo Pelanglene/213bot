@@ -24,6 +24,15 @@ services:
       - HF_DATASETS_CACHE=/app/storage/huggingface/datasets
       - HUGGINGFACE_HUB_CACHE=/app/storage/huggingface/hub
       - XDG_CACHE_HOME=/app/storage/.cache
+      # llama-cpp model/runtime parameters (override in .env if needed)
+      - LLAMA_MODEL_PATH=${LLAMA_MODEL_PATH:-/app/storage/huggingface/hub/Vikhr-Llama-3.2-1B-instruct-Q4_K_M.gguf}
+      - LLAMA_MODEL_URL=${LLAMA_MODEL_URL:-https://huggingface.co/Vikhrmodels/Vikhr-Llama-3.2-1B-instruct-GGUF/resolve/main/Vikhr-Llama-3.2-1B-Q4_K_M.gguf?download=true}
+      - LLAMA_MODEL_FILE=${LLAMA_MODEL_FILE:-Vikhr-Llama-3.2-1B-instruct-Q4_K_M.gguf}
+      - LLAMA_CTX=${LLAMA_CTX:-4096}
+      - LLAMA_THREADS=${LLAMA_THREADS:-4}
+      - LLAMA_N_GPU_LAYERS=${LLAMA_N_GPU_LAYERS:-0}
+      - LLAMA_ROPE_FREQ_BASE=${LLAMA_ROPE_FREQ_BASE:-0}
+      - LLAMA_ROPE_FREQ_SCALE=${LLAMA_ROPE_FREQ_SCALE:-0}
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs

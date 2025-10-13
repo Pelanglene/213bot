@@ -4,10 +4,8 @@ python-telegram-bot[job-queue]==21.6
 pyrogram==2.0.106
 tgcrypto==1.2.5
 aiohttp==3.9.5
-transformers==4.44.2
-torch==2.4.0
-sentencepiece==0.2.0
-safetensors==0.4.5
+llama-cpp-python==0.2.90
+huggingface-hub==0.24.7
 
 # Development dependencies
 pytest==7.4.3
