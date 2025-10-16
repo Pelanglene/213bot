@@ -7,6 +7,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         cmake \
+        ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies

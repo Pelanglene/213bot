@@ -32,6 +32,7 @@ async def post_init(app: Application) -> None:
         BotCommand("help", "Показать помощь"),
         BotCommand("goon", "NSFW waifu/neko/trap/blowjob (18+)"),
         BotCommand("top_gooners", "Топ гоунеров за месяц"),
+            BotCommand("reel", "Случайный Instagram Reels"),
     ]
 
     # Test-only commands

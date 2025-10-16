@@ -6,6 +6,7 @@ tgcrypto==1.2.5
 aiohttp==3.9.5
 llama-cpp-python==0.2.90
 huggingface-hub==0.24.7
+yt-dlp
 
 # Development dependencies
 pytest==7.4.3
