@@ -8,6 +8,7 @@ from .permissions import register_permissions_handlers
 from .ping import register_ping_handlers
 from .goon import register_goon_handlers
 from .summary import register_summary_handlers
+from .reel import register_reel_handlers
 
 
 def register_all_handlers(app: Application) -> None:
@@ -23,6 +24,7 @@ def register_all_handlers(app: Application) -> None:
     register_dead_chat_handlers(app)
     register_goon_handlers(app)
     register_summary_handlers(app)
+    register_reel_handlers(app)
 
 
 __all__ = ["register_all_handlers"]
